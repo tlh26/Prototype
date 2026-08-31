@@ -1,4 +1,9 @@
 __all__ = [
         "acquisitionManager",
-        "tenantResolver"
+        "tenantResolver",
+        "captureManifest",
+        "captureTarget",
+        "collectorRegistry",
+        "evidenceCaptureService",
+        "collectors",
 ]

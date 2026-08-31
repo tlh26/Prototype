@@ -1,0 +1,6 @@
+type=PROCTITLE msg=audit(08/27/2026 19:35:34.612:6622): proctitle=incus exec web-b --project tenant-b -- bash -c id; sleep 1
+type=PATH msg=audit(08/27/2026 19:35:34.612:6622): item=1 name=/lib/ld-linux-aarch64.so.1 inode=4103083 dev=fd:02 mode=file,755 ouid=root ogid=root rdev=00:00 nametype=NORMAL
+type=PATH msg=audit(08/27/2026 19:35:34.612:6622): item=0 name=/usr/bin/incus inode=4073937 dev=fd:02 mode=file,755 ouid=root ogid=root rdev=00:00 nametype=NORMAL
+type=CWD msg=audit(08/27/2026 19:35:34.612:6622): cwd=/home/tood
+type=EXECVE msg=audit(08/27/2026 19:35:34.612:6622): argc=9 a0=incus a1=exec a2=web-b a3=--project a4=tenant-b a5=-- a6=bash a7=-c a8=id; sleep 1
+type=SYSCALL msg=audit(08/27/2026 19:35:34.612:6622): arch=aarch64 syscall=execve success=yes exit=0 a0=0xb968d545cb08 a1=0xb968d5473170 a2=0xb968d5481dc0 a3=0xb968d5481dc0 items=2 ppid=115652 pid=115653 auid=tood uid=root gid=root euid=root suid=root fsuid=root egid=root sgid=root fsgid=root tty=pts2 ses=3 comm=incus exe=/usr/bin/incus subj=incus-tenant-b_web-b_</var/lib/incus>//&:incus-tenant-b_web-b_<var-lib-incus>:unconfined key=process_execution

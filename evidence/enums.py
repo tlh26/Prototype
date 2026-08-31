@@ -230,7 +230,8 @@ class EvidenceCategory(str, Enum):
     STORAGE = "storage"
 
     FILESYSTEM = "filesystem"
-
+    TRACE = "trace"
+    FILE_ACTIVITY = "file_activity"
     PROCESS = "process"
 
     SYSTEM = "system"
