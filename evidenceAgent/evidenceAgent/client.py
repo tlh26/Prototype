@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import json
+import base64
 
 import requests
 
@@ -13,7 +13,6 @@ class CentralEvidenceClient:
         base_url: str,
         api_key: str,
     ):
-
         self.base_url = base_url.rstrip("/")
         self.api_key = api_key
 
@@ -32,19 +31,18 @@ class CentralEvidenceClient:
             event.created_at.isoformat()
         )
 
-        payload["raw_data"] = (
-            event.raw_data.decode(
-                "utf-8",
-                errors="replace",
-            )
-        )
+        # Preserve the original evidence bytes.
+        # Central expects raw_data to be Base64 encoded.
+        payload["raw_data"] = base64.b64encode(
+            event.raw_data
+        ).decode("ascii")
 
         response = requests.post(
-            f"{self.base_url}/api/v1/evidence",
+            f"{self.base_url}/api/v1/evidence/events",
             json=payload,
             headers={
-                "Authorization":
-                    f"Bearer {self.api_key}",
+                "X-API-Key": self.api_key,
+                "Content-Type": "application/json",
             },
             timeout=10,
         )

@@ -14,7 +14,7 @@ WorkingDirectory=/opt/evidence-agent
 
 EnvironmentFile=/etc/evidence-agent/agent.env
 
-ExecStart=/opt/evidence-agent/.venv/bin/python -m agent.run
+ExecStart=/opt/evidence-agent/.venv/bin/python -m evidenceAgent.run
 
 Restart=always
 RestartSec=5
