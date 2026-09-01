@@ -2,8 +2,8 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from agent.client import CentralEvidenceClient
-from agent.models import (
+from evidenceAgent.evidenceAgent.client import CentralEvidenceClient
+from evidenceAgent.evidenceAgent.models import (
     EvidenceEvent,
     EvidenceType,
     EventType,
@@ -24,7 +24,7 @@ def make_event():
     )
 
 
-@patch("agent.client.requests.post")
+@patch("evidenceAgent.client.requests.post")
 def test_client_submits_event(mock_post):
     response = Mock()
     response.raise_for_status.return_value = None
@@ -53,7 +53,7 @@ def test_client_submits_event(mock_post):
     assert kwargs["timeout"] == 10
 
 
-@patch("agent.client.requests.post")
+@patch("evidenceAgent.client.requests.post")
 def test_client_propagates_http_error(mock_post):
     response = Mock()
 

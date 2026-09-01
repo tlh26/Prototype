@@ -1,11 +1,11 @@
 from pathlib import Path
 
-from agent.models import (
+from evidenceAgent.evidenceAgent.models import (
     EvidenceEvent,
     EvidenceType,
     EventType,
 )
-from agent.spool import EvidenceSpool
+from evidenceAgent.evidenceAgent.spool import EvidenceSpool
 
 
 def make_event(sequence=1):

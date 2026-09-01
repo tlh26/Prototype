@@ -1,6 +1,6 @@
 from unittest.mock import Mock
 
-from agent.agent import EvidenceAgent
+from evidenceAgent.evidenceAgent.agent import EvidenceAgent
 
 
 def test_agent_initializes(agent_config):

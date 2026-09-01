@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 from pathlib import Path
 
-from agent.models import (
+from evidenceAgent.models import (
     EvidenceEvent,
     EvidenceType,
     EventType,

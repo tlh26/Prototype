@@ -1,6 +1,6 @@
-from agent.collectors.files import FileCollector
-from agent.models import EventType
-from agent.state import AgentState
+from evidenceAgent.evidenceAgent.collectors.files import FileCollector
+from evidenceAgent.evidenceAgent.models import EventType
+from evidenceAgent.evidenceAgent.state import AgentState
 
 
 def make_collector(

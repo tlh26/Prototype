@@ -1,7 +1,7 @@
 from unittest.mock import Mock
 
-from agent.agent import EvidenceAgent
-from agent.models import EvidenceType
+from evidenceAgent.evidenceAgent.agent import EvidenceAgent
+from evidenceAgent.evidenceAgent.models import EvidenceType
 
 def test_end_to_end_local_agent_pipeline(
     agent_config,

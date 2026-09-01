@@ -1,9 +1,9 @@
-from agent.collectors.access import AccessCollector
-from agent.models import (
+from evidenceAgent.evidenceAgent.collectors.access import AccessCollector
+from evidenceAgent.evidenceAgent.models import (
     EvidenceType,
     EventType,
 )
-from agent.state import AgentState
+from evidenceAgent.evidenceAgent.state import AgentState
 
 
 def make_collector(access_log, state_dir):

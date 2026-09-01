@@ -1,0 +1,29 @@
+[Unit]
+Description=Evidence Collection Agent
+Documentation=Evidence Prototype
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+
+User=root
+Group=root
+
+WorkingDirectory=/opt/evidence-agent
+
+EnvironmentFile=/etc/evidence-agent/agent.env
+
+ExecStart=/opt/evidence-agent/.venv/bin/python -m agent.run
+
+Restart=always
+RestartSec=5
+
+KillSignal=SIGTERM
+TimeoutStopSec=30
+
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

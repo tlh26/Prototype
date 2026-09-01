@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 import pytest
 from pydantic import ValidationError
 
-from agent.models import (
+from evidenceAgent.evidenceAgent.models import (
     EvidenceEvent,
     EvidenceType,
     EventType,

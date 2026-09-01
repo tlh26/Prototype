@@ -2,16 +2,16 @@ from __future__ import annotations
 
 import time
 
-from agent.client import CentralEvidenceClient
-from agent.collectors.access import AccessCollector
-from agent.collectors.authentication import (
+from evidenceAgent.client import CentralEvidenceClient
+from evidenceAgent.collectors.access import AccessCollector
+from evidenceAgent.collectors.authentication import (
     AuthenticationCollector,
 )
-from agent.collectors.files import FileCollector
-from agent.config import AgentConfig
-from agent.models import EvidenceEvent
-from agent.spool import EvidenceSpool
-from agent.state import AgentState
+from evidenceAgent.collectors.files import FileCollector
+from evidenceAgent.config import AgentConfig
+from evidenceAgent.models import EvidenceEvent
+from evidenceAgent.spool import EvidenceSpool
+from evidenceAgent.state import AgentState
 
 
 class EvidenceAgent:

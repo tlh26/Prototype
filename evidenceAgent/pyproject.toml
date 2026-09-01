@@ -1,0 +1,37 @@
+[build-system]
+requires = [
+    "setuptools>=68",
+    "wheel",
+]
+build-backend = "setuptools.build_meta"
+
+
+[project]
+name = "evidence-agent"
+version = "1.0.0"
+description = "Evidence collection agent for the multi-tenant cloud evidence prototype"
+readme = "README.md"
+requires-python = ">=3.10"
+
+dependencies = [
+    "requests>=2.31,<3",
+    "pydantic>=2.0,<3",
+]
+
+
+[project.scripts]
+evidence-agent = "evidenceAgent.run:main"
+
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = [
+    "evidenceAgent",
+    "evidenceAgent.*",
+]
+
+
+[tool.pytest.ini_options]
+testpaths = [
+    "tests",
+]

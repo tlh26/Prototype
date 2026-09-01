@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from agent.models import EvidenceEvent
+from evidenceAgent.models import EvidenceEvent
 
 
 class EvidenceSpool:

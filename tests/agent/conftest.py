@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from agent.config import AgentConfig
+from evidenceAgent.evidenceAgent.config import AgentConfig
 
 
 @pytest.fixture

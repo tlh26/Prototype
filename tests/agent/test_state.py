@@ -2,7 +2,7 @@ import json
 
 import pytest
 
-from agent.state import AgentState
+from evidenceAgent.evidenceAgent.state import AgentState
 
 
 def test_state_initializes(state_dir):

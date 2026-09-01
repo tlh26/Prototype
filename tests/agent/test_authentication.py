@@ -1,11 +1,11 @@
-from agent.collectors.authentication import (
+from evidenceAgent.evidenceAgent.collectors.authentication import (
     AuthenticationCollector,
 )
-from agent.models import (
+from evidenceAgent.evidenceAgent.models import (
     EvidenceType,
     EventType,
 )
-from agent.state import AgentState
+from evidenceAgent.evidenceAgent.state import AgentState
 
 
 def create_collector(
