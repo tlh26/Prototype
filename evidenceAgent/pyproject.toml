@@ -8,7 +8,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "evidenceAgent"
-version = "1.0.3"
+version = "1.0.6"
 description = "Evidence collection agent for the multi-tenant cloud evidence prototype"
 readme = "README.md"
 requires-python = ">=3.10"
