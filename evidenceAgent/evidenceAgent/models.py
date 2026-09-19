@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+import hashlib
 from datetime import datetime, timezone
 from enum import Enum
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class EvidenceType(str, Enum):
@@ -40,13 +41,11 @@ class EvidenceEvent(BaseModel):
     )
 
     event_id: str
-
     tenant_id: str
     instance_name: str
 
     evidence_type: EvidenceType
     event_type: EventType
-
     timestamp: datetime
 
     actor: str | None = None
@@ -57,14 +56,14 @@ class EvidenceEvent(BaseModel):
     source: str
     source_path: str | None = None
 
-    details: dict[str, Any] = {}
+    details: dict[str, Any] = Field(
+        default_factory=dict
+    )
 
     sequence: int
-
     agent_id: str
 
     raw_data: bytes
-
     sha256: str
 
     created_at: datetime
@@ -90,8 +89,6 @@ class EvidenceEvent(BaseModel):
     ) -> "EvidenceEvent":
 
         timestamp = datetime.now(timezone.utc)
-
-        import hashlib
 
         return cls(
             event_id=event_id,

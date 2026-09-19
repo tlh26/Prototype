@@ -2,16 +2,16 @@ from __future__ import annotations
 
 import time
 
-from evidenceAgent.client import CentralEvidenceClient
-from evidenceAgent.collectors.access import AccessCollector
-from evidenceAgent.collectors.authentication import (
+from .client import CentralEvidenceClient
+from .collectors.access import AccessCollector
+from .collectors.authentication import (
     AuthenticationCollector,
 )
-from evidenceAgent.collectors.files import FileCollector
-from evidenceAgent.config import AgentConfig
-from evidenceAgent.models import EvidenceEvent
-from evidenceAgent.spool import EvidenceSpool
-from evidenceAgent.state import AgentState
+from .collectors.files import FileCollector
+from .config import AgentConfig
+from .models import EvidenceEvent
+from .spool import EvidenceSpool
+from .state import AgentState
 
 
 class EvidenceAgent:
@@ -89,7 +89,7 @@ class EvidenceAgent:
                     f"{collector.__class__.__name__}: {exc}"
                 )
 
-        self._retry_spool()
+        self.retry_spool()
 
     def _process(
         self,
@@ -128,7 +128,7 @@ class EvidenceAgent:
                 f"evidence spooled: {event.event_id}: {exc}"
             )
 
-    def _retry_spool(self):
+    def retry_spool(self):
         """
         Attempt to submit all locally spooled evidence.
 
@@ -156,6 +156,12 @@ class EvidenceAgent:
                 event = self.spool.load(
                     path
                 )
+
+                if not isinstance(event, EvidenceEvent):
+                    raise TypeError(
+                    f"Expected EvidenceEvent in instance spool, "
+                    f"got {type(event).__name__}"
+                    )
 
                 self.client.submit(
                     event

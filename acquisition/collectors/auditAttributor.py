@@ -5,7 +5,7 @@ from dataclasses import dataclass
 
 
 _INCUS_SUBJECT_RE = re.compile(
-    rb"\bsubj=incus-([^\_\s]+)_([^\_\s]+)"
+    rb"\bsubj=incus-(tenant-[a-z0-9-]+)_([a-z0-9-]+)_"
 )
 
 

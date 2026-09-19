@@ -1,18 +1,22 @@
 from __future__ import annotations
 
-import base64
 import json
+import os
 from pathlib import Path
 
-from evidenceAgent.models import EvidenceEvent
+from .models import EvidenceEvent
+from .transportModels import EvidenceBatch
 
 
 class EvidenceSpool:
     """
-    Durable local queue for evidence events that could not be
-    submitted to the Central API.
+    Durable local queue for evidence that could not be
+    submitted to Central.
 
-    Events remain on disk until the Central API successfully
+    InstanceAgent entries contain one EvidenceEvent.
+    HostAgent entries contain one EvidenceBatch.
+
+    Entries remain on disk until Central successfully
     acknowledges them.
     """
 
@@ -29,49 +33,81 @@ class EvidenceSpool:
 
     def store(
         self,
-        event: EvidenceEvent,
+        item: EvidenceEvent | EvidenceBatch,
     ) -> Path:
         """
-        Persist an evidence event to the local spool.
-
-        raw_data is Base64 encoded so the original bytes are preserved
-        exactly, including arbitrary binary evidence.
+        Persist either an instance EvidenceEvent or a host
+        EvidenceBatch.
         """
 
-        path = (
-            self.directory
-            / f"{event.sequence:020d}_{event.event_id}.json"
+        if isinstance(item, EvidenceEvent):
+            payload = item.model_dump(
+                mode="json"
+            )
+            path = self.directory / self._event_filename(item)
+
+        elif isinstance(item, EvidenceBatch):
+            payload = item.model_dump(
+                mode="json"
+            )
+            path = self.directory / self._batch_filename(item)
+
+        else:
+            raise TypeError(
+                f"Unsupported spool item type: "
+                f"{type(item).__name__}"
+            )
+
+        temporary_path = path.with_suffix(".tmp")
+
+        data = json.dumps(
+            payload,
+            sort_keys=True,
         )
 
-        payload = event.model_dump()
-
-        payload["timestamp"] = (
-            event.timestamp.isoformat()
-        )
-
-        payload["created_at"] = (
-            event.created_at.isoformat()
-        )
-
-        payload["raw_data"] = base64.b64encode(
-            event.raw_data
-        ).decode("ascii")
-
-        path.write_text(
-            json.dumps(
-                payload,
-                sort_keys=True,
-            ),
+        with temporary_path.open(
+            "w",
             encoding="utf-8",
-        )
+        ) as handle:
+            handle.write(data)
+            handle.flush()
+            os.fsync(handle.fileno())
+
+        temporary_path.replace(path)
 
         return path
 
-    def pending(self) -> list[Path]:
-        """
-        Return all pending spool entries in sequence order.
-        """
+    def _event_filename(
+        self,
+        event: EvidenceEvent,
+    ) -> str:
+        return (
+            f"{event.sequence:020d}_"
+            f"{event.event_id}.json"
+        )
 
+    def _batch_filename(
+        self,
+        batch: EvidenceBatch,
+    ) -> str:
+        if batch.evidence:
+            sequence = min(
+                (
+                    envelope.sequence_start
+                    for envelope in batch.evidence
+                    if envelope.sequence_start is not None
+                ),
+                default=0,
+            )
+        else:
+            sequence = 0
+
+        return (
+            f"{sequence:020d}_"
+            f"{batch.agent_id}.json"
+        )
+
+    def pending(self) -> list[Path]:
         return sorted(
             self.directory.glob("*.json")
         )
@@ -79,9 +115,12 @@ class EvidenceSpool:
     def load(
         self,
         path: Path,
-    ) -> EvidenceEvent:
+    ) -> EvidenceEvent | EvidenceBatch:
         """
-        Load and deserialize a spooled evidence event.
+        Deserialize a spool entry.
+
+        The payload shape determines whether the entry is an
+        instance EvidenceEvent or a host EvidenceBatch.
         """
 
         payload = json.loads(
@@ -90,10 +129,10 @@ class EvidenceSpool:
             )
         )
 
-        payload["raw_data"] = base64.b64decode(
-            payload["raw_data"],
-            validate=True,
-        )
+        if "evidence" in payload:
+            return EvidenceBatch.model_validate(
+                payload
+            )
 
         return EvidenceEvent.model_validate(
             payload
@@ -103,10 +142,6 @@ class EvidenceSpool:
         self,
         path: Path,
     ) -> None:
-        """
-        Remove a spool entry after successful submission.
-        """
-
         path.unlink(
             missing_ok=True
         )

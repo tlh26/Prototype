@@ -13,20 +13,21 @@ class AuditCheckpoint:
     """
     Persistent cursor for incremental host audit acquisition.
 
-    source_path:
-        Path to the audit log.
+    The source file identity is:
 
-    file_device/file_inode:
-        Identify the physical file currently being consumed.
+        source_path + file_device + file_inode
+
+    These values must all refer to the same physical audit-log file.
 
     offset:
-        Byte offset up to which the collector has safely processed data.
+        Byte offset up to which data has been safely processed.
 
     last_sequence:
         Highest audit serial successfully persisted.
 
     pending_data:
-        Raw bytes belonging to an event that may not yet be complete.
+        Raw bytes belonging to the current source file that are not
+        yet safe to process as a complete event.
     """
 
     source_path: str
@@ -76,6 +77,27 @@ class AuditCheckpoint:
                 else None
             ),
             pending_data=pending_data,
+        )
+
+    def matches_source(
+        self,
+        *,
+        source_path: str,
+        file_device: int,
+        file_inode: int,
+    ) -> bool:
+        """
+        Return True only when the checkpoint refers to the same
+        physical source file.
+        """
+
+        return (
+            self.source_path
+            == str(Path(source_path).resolve())
+            and self.file_device
+            == file_device
+            and self.file_inode
+            == file_inode
         )
 
 

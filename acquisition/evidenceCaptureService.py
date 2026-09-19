@@ -1,3 +1,4 @@
+# acquisition/evidenceCaptureService.py
 from __future__ import annotations
 
 import uuid
@@ -9,60 +10,16 @@ from acquisition.captureManifest import (
 )
 from acquisition.captureTarget import CaptureTarget
 from acquisition.collectorRegistry import CollectorRegistry
-from acquisition.collectors.audit import AuditEvidence
-from acquisition.collectors.base import CollectorError
-from storage.evidenceRepo import (
-    SQLiteEvidenceRepository,
+from acquisition.collectors.audit import (
+    AuditCollectionResult,
+    AuditCollector,
+    AuditEvidence,
 )
+from acquisition.collectors.base import CollectorError
+from storage.evidenceRepo import SQLiteEvidenceRepository
 
 
 class EvidenceCaptureService:
-    """
-    Orchestrates evidence acquisition for a CaptureTarget.
-
-    Responsibilities:
-
-        1. Create a capture manifest.
-        2. Persist the initial capture manifest.
-        3. Select the requested collector.
-        4. Execute evidence acquisition.
-        5. Persist acquired evidence.
-        6. Complete the capture manifest.
-        7. Persist the completed manifest.
-
-    The service does not interpret evidence.
-
-    Acquisition flow:
-
-        CaptureTarget
-             |
-             v
-        Create capture ID
-             |
-             v
-        Initial CaptureManifest
-             |
-             v
-        Persist manifest
-             |
-             v
-        Collector
-             |
-             v
-        Evidence
-             |
-             v
-        SHA-256 verification
-             |
-             v
-        Persist evidence
-             |
-             v
-        Complete manifest
-             |
-             v
-        Update manifest
-    """
 
     def __init__(
         self,
@@ -70,7 +27,6 @@ class EvidenceCaptureService:
         registry: CollectorRegistry,
         repository: SQLiteEvidenceRepository,
     ) -> None:
-
         self.registry = registry
         self.repository = repository
 
@@ -83,83 +39,40 @@ class EvidenceCaptureService:
         """
         Execute an evidence capture operation.
 
-        The initial manifest is persisted before evidence acquisition
-        so that evidence records can safely reference capture_id through
-        the database foreign key.
-
-        Each source is attempted independently. Therefore:
-
-            all successful -> SUCCESS
-            some successful -> PARTIAL
-            none successful -> FAILED
+        The manifest is persisted before any evidence is acquired.
+        Each source is isolated so that one source failure does not
+        abort the complete capture.
         """
 
-        capture_id = str(
-            uuid.uuid4()
-        )
-
-        # --------------------------------------------------------------
-        # 1. Create initial immutable manifest
-        # --------------------------------------------------------------
+        capture_id = str(uuid.uuid4())
 
         manifest = CaptureManifest.create(
             capture_id=capture_id,
-
             tenant_id=target.tenant.tenant_id,
-
             tenant_hash=target.tenant.tenant_hash,
-
             project_id=target.tenant.platform_project_id,
-
             instance_name=target.instance_name,
         )
 
-        # --------------------------------------------------------------
-        # 2. Persist initial manifest
-        #
-        # This must happen before save_audit() because evidence.capture_id
-        # references capture_manifests.capture_id.
-        # --------------------------------------------------------------
-
-        self.repository.save_manifest(
-            manifest
-        )
-
-        # --------------------------------------------------------------
-        # 3. Acquire each requested evidence source
-        # --------------------------------------------------------------
+        # Persist the initial manifest before acquiring evidence.
+        self.repository.save_manifest(manifest)
 
         results: list[CaptureSourceResult] = []
 
         for source in sources:
-
-            result = self._capture_source(
-                capture_id=capture_id,
-
-                target=target,
-
-                source=source,
-            )
-
             results.append(
-                result
+                self._capture_source(
+                    capture_id=capture_id,
+                    target=target,
+                    source=source,
+                )
             )
 
-        # --------------------------------------------------------------
-        # 4. Complete immutable manifest
-        # --------------------------------------------------------------
+        # Complete the immutable manifest with source results.
+        manifest = manifest.complete(results)
 
-        manifest = manifest.complete(
-            results
-        )
-
-        # --------------------------------------------------------------
-        # 5. Persist completed manifest
-        # --------------------------------------------------------------
-
-        self.repository.update_manifest(
-            manifest
-        )
+        # Persist final capture state.
+        self.repository.update_manifest(manifest)
 
         return manifest
 
@@ -173,84 +86,118 @@ class EvidenceCaptureService:
         """
         Acquire and persist one evidence source.
 
-        Failure of one source does not abort the entire capture.
-        Instead, the failure is recorded in the manifest.
+        AuditCollector has a special incremental collection contract.
+        Other collectors retain the original collect() contract.
         """
 
         try:
+            collector = self.registry.get(source)
 
-            # ----------------------------------------------------------
-            # Select collector
-            # ----------------------------------------------------------
+            if isinstance(collector, AuditCollector):
+                return self._capture_audit_collection(
+                    capture_id=capture_id,
+                    collector=collector,
+                    source=source,
+                )
 
-            collector = self.registry.get(
-                source
-            )
-
-            # ----------------------------------------------------------
-            # Acquire evidence
-            # ----------------------------------------------------------
-
+            # Preserve the original collector contract used by
+            # generic collectors and the existing unit tests.
             evidence = collector.collect(
                 tenant=target.tenant,
-
                 instance_name=target.instance_name,
             )
 
-            # ----------------------------------------------------------
-            # Validate evidence type
-            # ----------------------------------------------------------
-
-            if not isinstance(
-                evidence,
-                AuditEvidence,
-            ):
+            if not isinstance(evidence, AuditEvidence):
                 raise CollectorError(
                     f"Unsupported evidence type returned "
                     f"by collector '{source}'",
                     source=source,
                 )
 
-            # ----------------------------------------------------------
-            # Persist evidence
-            #
-            # SQLiteEvidenceRepository independently verifies the
-            # SHA-256 of raw_data before inserting the record.
-            # ----------------------------------------------------------
-
             self.repository.save_audit(
                 evidence,
-
                 capture_id=capture_id,
             )
 
-            # ----------------------------------------------------------
-            # Report successful source
-            # ----------------------------------------------------------
-
             return CaptureSourceResult(
                 source=source,
-
                 status=SourceCaptureStatus.SUCCESS,
-
                 evidence_id=evidence.evidence_id,
-
                 sha256=evidence.sha256,
-
                 size_bytes=evidence.size_bytes,
             )
 
         except Exception as exc:
-
-            # ----------------------------------------------------------
-            # A source failure is recorded rather than aborting the
-            # complete capture operation.
-            # ----------------------------------------------------------
-
             return CaptureSourceResult(
                 source=source,
-
                 status=SourceCaptureStatus.FAILED,
-
                 error=str(exc),
             )
+
+    def _capture_audit_collection(
+        self,
+        *,
+        capture_id: str,
+        collector: AuditCollector,
+        source: str,
+    ) -> CaptureSourceResult:
+        """
+        Acquire and persist an incremental audit collection.
+
+        The audit checkpoint is committed only after every evidence
+        item returned by collect_new() has been successfully persisted.
+        """
+
+        collection = collector.collect_new()
+
+        if not isinstance(collection, AuditCollectionResult):
+            raise CollectorError(
+                "Audit collector returned an unsupported "
+                "collection result",
+                source=source,
+            )
+
+        # Persist every newly collected audit evidence item.
+        for evidence in collection.evidence:
+            if not isinstance(evidence, AuditEvidence):
+                raise CollectorError(
+                    "Audit collector returned an unsupported "
+                    "evidence type",
+                    source=source,
+                )
+
+            self.repository.save_audit(
+                evidence,
+                capture_id=capture_id,
+            )
+
+        # IMPORTANT:
+        #
+        # Do not advance the checkpoint until all evidence has been
+        # persisted successfully. Otherwise a persistence failure could
+        # cause evidence to be skipped during the next capture.
+        collector.commit_checkpoint(
+            collection.checkpoint
+        )
+
+        # A successful collection may legitimately contain no new
+        # evidence, for example when the audit log has not changed.
+        if not collection.evidence:
+            return CaptureSourceResult(
+                source=source,
+                status=SourceCaptureStatus.SUCCESS,
+            )
+
+        # CaptureSourceResult currently represents one source with
+        # single-evidence metadata. AuditCollector can return multiple
+        # evidence records, so use the first record here for backwards
+        # compatibility while all records have already been persisted.
+        first = collection.evidence[0]
+
+        return CaptureSourceResult(
+            source=source,
+            status=SourceCaptureStatus.SUCCESS,
+            evidence_id=first.evidence_id,
+            sha256=first.sha256,
+            size_bytes=first.size_bytes,
+        )

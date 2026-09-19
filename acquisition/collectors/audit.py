@@ -7,6 +7,7 @@ import re
 from dataclasses import dataclass
 from datetime import datetime, timezone
 
+from pathlib import Path
 from pydantic import BaseModel, ConfigDict
 
 from acquisition.checkpoint import (
@@ -32,6 +33,10 @@ from evidence.tenant import TenantContext
 
 _AUDIT_SEQUENCE_RE = re.compile(
     rb"msg=audit\([^)]*:(\d+)\)"
+)
+
+_AUDIT_ID_RE = re.compile(
+    rb"msg=audit\((\d+\.\d+):(\d+)\)"
 )
 
 
@@ -63,6 +68,7 @@ class AuditEvent(BaseModel):
 
     sequence: int
     raw_data: bytes
+    audit_timestamp: str
 
 
 # ---------------------------------------------------------------------------
@@ -228,6 +234,26 @@ class AuditCollector(
             audit_path
         )
 
+        canonical_path = str(
+            Path(audit_path).resolve()
+        )
+
+        same_source = (
+            checkpoint is not None
+            and checkpoint.matches_source(
+                source_path=canonical_path,
+                file_device=metadata["device"],
+                file_inode=metadata["inode"],
+            )
+        )
+
+        if same_source:
+            start_offset = checkpoint.offset
+            previous_pending = checkpoint.pending_data
+        else:
+            start_offset = 0
+            previous_pending = b""
+
         start_offset = (
             self._calculate_start_offset(
                 checkpoint=checkpoint,
@@ -236,27 +262,52 @@ class AuditCollector(
             )
         )
 
-        if metadata["size"] < start_offset:
-            raise CollectorError(
-                "Audit log size is smaller than "
-                "the checkpoint offset",
-                source=self.source,
-            )
+        # if metadata["size"] < start_offset:
+        #     raise CollectorError(
+        #         "Audit log size is smaller than "
+        #         "the checkpoint offset",
+        #         source=self.source,
+        #     )
+
+        if same_source and metadata["size"] < start_offset:
+            start_offset = 0
+            previous_pending = b""
+            same_source = False
 
         new_size = (
             metadata["size"]
             - start_offset
         )
 
+        # new_data = self._read_audit_range(
+        #     audit_path=audit_path,
+        #     offset=start_offset,
+        #     size=new_size,
+        # )
+
         new_data = self._read_audit_range(
             audit_path=audit_path,
             offset=start_offset,
-            size=new_size,
+            size=metadata["size"] - start_offset,
+        )
+
+        # previous_pending = (
+        #     checkpoint.pending_data
+        #     if checkpoint is not None
+        #     else b""
+        # )
+
+        checkpoint_matches_source = (
+            self._checkpoint_matches_source(
+                checkpoint=checkpoint,
+                metadata=metadata,
+                audit_path=audit_path,
+            )
         )
 
         previous_pending = (
             checkpoint.pending_data
-            if checkpoint is not None
+            if checkpoint_matches_source
             else b""
         )
 
@@ -319,7 +370,8 @@ class AuditCollector(
         )
 
         next_checkpoint = AuditCheckpoint(
-            source_path=audit_path,
+            #source_path=audit_path,
+            source_path=canonical_path,
             file_device=metadata["device"],
             file_inode=metadata["inode"],
             offset=safe_offset,
@@ -522,24 +574,38 @@ class AuditCollector(
         # The next collection cycle will combine it with new bytes.
         # ---------------------------------------------------------------
 
-        highest_sequence = max(
-            event.sequence
-            for event in events
+        # highest_sequence = max(
+        #     event.sequence
+        #     for event in events
+        # )
+
+        highest_event = max(
+            events,
+            key=lambda event: (
+                float(event.audit_timestamp),
+                event.sequence,
+            ),
         )
 
         complete_events: list[AuditEvent] = []
-        highest_event: AuditEvent | None = None
+        #highest_event: AuditEvent | None = None
+
+        # for event in events:
+        #     if (
+        #         event.sequence
+        #         == highest_sequence
+        #     ):
+        #         highest_event = event
+        #     else:
+        #         complete_events.append(
+        #             event
+        #         )
 
         for event in events:
-            if (
-                event.sequence
-                == highest_sequence
-            ):
-                highest_event = event
-            else:
-                complete_events.append(
-                    event
-                )
+            if event is highest_event:
+                continue
+
+            complete_events.append(event)
 
         if highest_event is not None:
             pending = (
@@ -565,33 +631,63 @@ class AuditCollector(
         """
 
         grouped: dict[
-            int,
+           #int,
+            tuple[str, int],
             list[bytes],
         ] = {}
 
         for record in records:
-            sequence = (
-                cls._extract_sequence(
+            # sequence = (
+            #     cls._extract_sequence(
+            #         record
+            #     )
+            # )
+
+            # if sequence is None:
+            #     continue
+
+            identity = (
+                cls._extract_audit_identity(
                     record
                 )
             )
 
-            if sequence is None:
+            if identity is None:
                 continue
 
             grouped.setdefault(
-                sequence,
+                identity,
                 [],
             ).append(record)
 
         events: list[AuditEvent] = []
 
-        for sequence in sorted(grouped):
+        # for sequence in sorted(grouped):
+        #     events.append(
+        #         AuditEvent(
+        #             sequence=sequence,
+        #             raw_data=b"".join(
+        #                 grouped[sequence]
+        #             ),
+        #         )
+        #     )
+
+        for (
+            audit_timestamp,
+            sequence,
+        ), event_records in sorted(
+            grouped.items(),
+            key=lambda item: (
+                float(item[0][0]),
+                item[0][1],
+            ),
+        ):
             events.append(
                 AuditEvent(
+                    audit_timestamp=audit_timestamp,
                     sequence=sequence,
                     raw_data=b"".join(
-                        grouped[sequence]
+                        event_records
                     ),
                 )
             )
@@ -638,6 +734,7 @@ class AuditCollector(
                 self._make_event_id(
                     host_id=self.host_id,
                     sequence=event.sequence,
+                    audit_timestamp=event.audit_timestamp,
                     raw_data=raw_data,
                 )
             ),
@@ -671,6 +768,7 @@ class AuditCollector(
         *,
         host_id: str,
         sequence: int,
+        audit_timestamp: str,
         raw_data: bytes,
     ) -> str:
         """
@@ -683,7 +781,9 @@ class AuditCollector(
 
         return (
             f"auditd:"
+            f"{host_id}:"
             f"{sequence}:"
+            f"{audit_timestamp}:"
             f"{digest}"
         )
 
@@ -834,25 +934,11 @@ class AuditCollector(
         metadata: dict[str, int],
         audit_path: str,
     ) -> int:
-        if checkpoint is None:
-            return 0
-
-        if checkpoint.source_path != audit_path:
-            return 0
-
-        same_file = (
-            checkpoint.file_device
-            == metadata["device"]
-            and checkpoint.file_inode
-            == metadata["inode"]
-        )
-
-        if not same_file:
-            # Audit log rotation detected.
-            return 0
-
-        if metadata["size"] < checkpoint.offset:
-            # File was truncated.
+        if not AuditCollector._checkpoint_matches_source(
+            checkpoint=checkpoint,
+            metadata=metadata,
+            audit_path=audit_path,
+        ):
             return 0
 
         return checkpoint.offset
@@ -881,20 +967,39 @@ class AuditCollector(
     # LEGACY HELPERS
     # =======================================================================
 
+    # @staticmethod
+    # def _extract_sequence(
+    #     record: bytes,
+    # ) -> int | None:
+    #     match = _AUDIT_SEQUENCE_RE.search(
+    #         record
+    #     )
+
+    #     if not match:
+    #         return None
+
+    #     return int(
+    #         match.group(1)
+    #     )
+
     @staticmethod
-    def _extract_sequence(
-        record: bytes,
-    ) -> int | None:
-        match = _AUDIT_SEQUENCE_RE.search(
-            record
-        )
+    def _extract_audit_identity(
+    record: bytes,
+    ) -> tuple[str, int] | None:
+        match = _AUDIT_ID_RE.search(record)
 
         if not match:
             return None
 
-        return int(
-            match.group(1)
+        timestamp = match.group(1).decode(
+            "ascii"
         )
+
+        sequence = int(
+            match.group(2)
+        )
+
+        return timestamp, sequence
 
     @classmethod
     def _parse_events(
@@ -935,11 +1040,9 @@ class AuditCollector(
         int | None,
     ]:
         sequences = [
-            int(match.group(1))
-            for match in (
-                _AUDIT_SEQUENCE_RE.finditer(
-                    raw_data
-                )
+            int(match.group(2))
+            for match in _AUDIT_ID_RE.finditer(
+                raw_data
             )
         ]
 
@@ -950,3 +1053,34 @@ class AuditCollector(
             min(sequences),
             max(sequences),
         )
+
+
+    @staticmethod
+    def _checkpoint_matches_source(
+        *,
+        checkpoint: AuditCheckpoint | None,
+        metadata: dict[str, int],
+        audit_path: str,
+    ) -> bool:
+        if checkpoint is None:
+            return False
+
+        if checkpoint.source_path != audit_path:
+            return False
+
+        if (
+            checkpoint.file_device
+            != metadata["device"]
+        ):
+            return False
+
+        if (
+            checkpoint.file_inode
+            != metadata["inode"]
+        ):
+            return False
+
+        if metadata["size"] < checkpoint.offset:
+            return False
+
+        return True
