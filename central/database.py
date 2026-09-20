@@ -178,6 +178,64 @@ def initialise_database(config: CentralConfig) -> None:
             """
         )
 
+        connection.execute(
+            """
+        CREATE TABLE IF NOT EXISTS evidence_records (
+            evidence_id TEXT PRIMARY KEY,
+            tenant_id TEXT,
+            tenant_hash TEXT,
+            project_id TEXT,
+            instance_name TEXT,
+            scope TEXT,
+            source TEXT NOT NULL,
+            source_path TEXT NOT NULL,
+            acquisition_layer TEXT NOT NULL,
+            acquired_from TEXT NOT NULL,
+            attribution_method TEXT NOT NULL,
+            collected_at TEXT NOT NULL,
+            raw_data BLOB NOT NULL,
+            sha256 TEXT NOT NULL,
+            size_bytes INTEGER NOT NULL,
+            sequence_start INTEGER,
+            sequence_end INTEGER,
+            capture_id TEXT,
+            record_sha256 TEXT
+        )
+        """
+    )
+
+        connection.execute(
+        """
+        CREATE INDEX IF NOT EXISTS
+            idx_evidence_records_tenant
+            ON evidence_records(tenant_id)
+        """
+        )
+
+        connection.execute(
+        """
+        CREATE INDEX IF NOT EXISTS
+            idx_evidence_records_instance
+            ON evidence_records(instance_name)
+        """
+        )
+
+        connection.execute(
+        """
+        CREATE INDEX IF NOT EXISTS
+            idx_evidence_records_source
+            ON evidence_records(source)
+        """
+        )
+
+        connection.execute(
+        """
+        CREATE INDEX IF NOT EXISTS
+            idx_evidence_records_collected_at
+            ON evidence_records(collected_at)
+        """
+        )
+
         connection.commit()
 
     finally:

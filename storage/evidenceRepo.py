@@ -1,87 +1,85 @@
+# storage/evidenceRepo.py
+
 from __future__ import annotations
 
 import hashlib
 import json
 import sqlite3
+
 from contextlib import contextmanager
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterator
 
 from acquisition.captureManifest import CaptureManifest
 from acquisition.collectors.audit import AuditEvidence
+import evidence
+from evidence.evidence import EvidenceRecord
 
 
 class SQLiteEvidenceRepository:
     """
-    SQLite-backed repository for acquired forensic evidence.
+    SQLite-backed repository for central raw evidence storage.
 
-    The repository stores:
+    Responsibilities
+    ----------------
+    - persist capture manifests;
+    - persist immutable raw evidence;
+    - preserve evidence provenance;
+    - calculate SHA-256 integrity hashes;
+    - verify persisted evidence independently;
+    - provide transaction boundaries.
 
-        - raw evidence bytes
-        - SHA-256 of raw evidence
-        - evidence metadata
-        - tenant information
-        - acquisition information
-        - capture manifests
-        - record-level integrity hash
+    This repository does NOT:
+        - collect evidence;
+        - parse audit records;
+        - resolve tenants;
+        - perform correlation.
 
-    SQLite is used as the prototype persistence layer.
+    Raw evidence is stored directly as a SQLite BLOB.
 
-    Integrity model:
+    Two integrity levels are maintained:
 
-        raw evidence
-            |
-            +-- SHA-256 --> evidence.sha256
+        sha256
+            SHA-256 of raw_data.
 
-        evidence metadata + evidence.sha256
-            |
-            +-- SHA-256 --> evidence.record_sha256
-
-    Evidence records are INSERT-only.
-
-    Capture manifests have a lifecycle:
-
-        create
-          |
-          v
-        save_manifest()
-          |
-          v
-        acquisition
-          |
-          v
-        update_manifest()
-          |
-          v
-        completed manifest
+        record_sha256
+            SHA-256 of the canonical evidence metadata plus
+            the SHA-256 of raw_data.
     """
+
+    SCHEMA_VERSION = 1
+
+    # ------------------------------------------------------------------
+    # INITIALIZATION
+    # ------------------------------------------------------------------
 
     def __init__(
         self,
         database_path: str | Path,
     ) -> None:
-
         self.database_path = Path(database_path)
 
-        self.database_path.parent.mkdir(
-            parents=True,
-            exist_ok=True,
-        )
+        if str(database_path) != ":memory:":
+            self.database_path.parent.mkdir(
+                parents=True,
+                exist_ok=True,
+            )
 
         self._initialize_database()
 
-    # ==================================================================
-    # Database connection / transactions
-    # ==================================================================
+    # ------------------------------------------------------------------
+    # CONNECTION
+    # ------------------------------------------------------------------
 
     def _connect(self) -> sqlite3.Connection:
         """
-        Create a SQLite connection with foreign-key enforcement enabled.
+        Create a configured SQLite connection.
         """
 
         connection = sqlite3.connect(
-            self.database_path
+            self.database_path,
+            timeout=30,
         )
 
         connection.row_factory = sqlite3.Row
@@ -90,41 +88,33 @@ class SQLiteEvidenceRepository:
             "PRAGMA foreign_keys = ON"
         )
 
+        connection.execute(
+            "PRAGMA journal_mode = WAL"
+        )
+
+        connection.execute(
+            "PRAGMA synchronous = FULL"
+        )
+
         return connection
+
+    # ------------------------------------------------------------------
+    # TRANSACTION
+    # ------------------------------------------------------------------
 
     @contextmanager
     def transaction(
         self,
     ) -> Iterator[sqlite3.Connection]:
         """
-        Provide an explicit transaction boundary.
+        Execute operations inside an explicit transaction.
 
-        This allows callers such as EvidenceCaptureService to perform
-        multiple persistence operations atomically.
-
-        Example:
-
-            with repository.transaction() as connection:
-
-                repository.save_manifest(
-                    manifest,
-                    connection=connection,
-                )
-
-                repository.save_audit(
-                    evidence,
-                    capture_id=manifest.capture_id,
-                    connection=connection,
-                )
-
-        If an exception occurs, the transaction is rolled back.
-        Otherwise it is committed.
+        The caller owns the transaction boundary.
         """
 
         connection = self._connect()
 
         try:
-
             connection.execute("BEGIN")
 
             yield connection
@@ -132,174 +122,253 @@ class SQLiteEvidenceRepository:
             connection.commit()
 
         except Exception:
-
             connection.rollback()
-
             raise
 
         finally:
-
             connection.close()
 
-    # ==================================================================
-    # Database initialization
-    # ==================================================================
+    # ------------------------------------------------------------------
+    # DATABASE INITIALIZATION
+    # ------------------------------------------------------------------
 
     def _initialize_database(self) -> None:
+        """
+        Create the central evidence schema if it does not exist.
+        """
 
         with self._connect() as connection:
 
-            connection.executescript(
+            connection.execute(
                 """
                 CREATE TABLE IF NOT EXISTS capture_manifests (
                     capture_id TEXT PRIMARY KEY,
 
-                    tenant_id TEXT NOT NULL,
-
-                    tenant_hash TEXT NOT NULL,
-
-                    project_id TEXT NOT NULL,
-
-                    instance_name TEXT NOT NULL,
-
-                    started_at TEXT NOT NULL,
-
-                    completed_at TEXT,
-
                     status TEXT NOT NULL,
 
-                    source_count INTEGER NOT NULL,
+                    started_at TEXT NOT NULL,
+                    completed_at TEXT,
 
-                    evidence_count INTEGER NOT NULL,
+                    requested_source_count
+                        INTEGER NOT NULL DEFAULT 0,
 
-                    manifest_json TEXT NOT NULL
-                );
+                    successful_source_count
+                        INTEGER NOT NULL DEFAULT 0,
 
+                    failed_source_count
+                        INTEGER NOT NULL DEFAULT 0,
+
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL
+                )
+                """
+            )
+
+            connection.execute(
+                """
                 CREATE TABLE IF NOT EXISTS evidence (
                     evidence_id TEXT PRIMARY KEY,
 
                     capture_id TEXT,
 
-                    tenant_id TEXT NOT NULL,
+                    tenant_id TEXT,
+                    tenant_hash TEXT,
 
-                    tenant_hash TEXT NOT NULL,
+                    project_id TEXT,
+                    instance_name TEXT,
 
-                    project_id TEXT NOT NULL,
-
-                    instance_name TEXT NOT NULL,
+                    scope TEXT,
 
                     source TEXT NOT NULL,
-
                     source_path TEXT NOT NULL,
+
+                    acquisition_layer TEXT NOT NULL,
+                    acquired_from TEXT NOT NULL,
+                    attribution_method TEXT NOT NULL,
 
                     collected_at TEXT NOT NULL,
 
                     raw_data BLOB NOT NULL,
 
                     sha256 TEXT NOT NULL,
-
                     size_bytes INTEGER NOT NULL,
 
                     sequence_start INTEGER,
-
                     sequence_end INTEGER,
 
                     record_sha256 TEXT NOT NULL,
 
                     FOREIGN KEY (capture_id)
                         REFERENCES capture_manifests(capture_id)
-                );
-
-                CREATE INDEX IF NOT EXISTS
-                    idx_evidence_tenant
-                ON evidence(tenant_id);
-
-                CREATE INDEX IF NOT EXISTS
-                    idx_evidence_instance
-                ON evidence(instance_name);
-
-                CREATE INDEX IF NOT EXISTS
-                    idx_evidence_source
-                ON evidence(source);
-
-                CREATE INDEX IF NOT EXISTS
-                    idx_evidence_capture
-                ON evidence(capture_id);
-
-                CREATE INDEX IF NOT EXISTS
-                    idx_evidence_sha256
-                ON evidence(sha256);
+                )
                 """
             )
 
-    # ==================================================================
-    # Utility functions
-    # ==================================================================
+            connection.execute(
+                """
+                CREATE INDEX IF NOT EXISTS
+                idx_evidence_tenant
+                ON evidence(tenant_id)
+                """
+            )
+
+            connection.execute(
+                """
+                CREATE INDEX IF NOT EXISTS
+                idx_evidence_instance
+                ON evidence(instance_name)
+                """
+            )
+
+            connection.execute(
+                """
+                CREATE INDEX IF NOT EXISTS
+                idx_evidence_source
+                ON evidence(source)
+                """
+            )
+
+            connection.execute(
+                """
+                CREATE INDEX IF NOT EXISTS
+                idx_evidence_capture
+                ON evidence(capture_id)
+                """
+            )
+
+            connection.execute(
+                """
+                CREATE INDEX IF NOT EXISTS
+                idx_evidence_collected_at
+                ON evidence(collected_at)
+                """
+            )
+
+    # ------------------------------------------------------------------
+    # DATETIME
+    # ------------------------------------------------------------------
 
     @staticmethod
     def _datetime_to_string(
         value: datetime | None,
     ) -> str | None:
+        """
+        Convert datetime to canonical UTC ISO-8601 representation.
+        """
 
         if value is None:
             return None
 
-        return value.isoformat()
+        if value.tzinfo is None:
+            value = value.replace(
+                tzinfo=timezone.utc
+            )
+
+        return value.astimezone(
+            timezone.utc
+        ).isoformat()
+
+    # ------------------------------------------------------------------
+    # RAW HASH
+    # ------------------------------------------------------------------
 
     @staticmethod
     def _calculate_raw_sha256(
         raw_data: bytes,
     ) -> str:
         """
-        Calculate SHA-256 directly from raw evidence bytes.
+        Calculate SHA-256 over the raw evidence bytes.
         """
 
         return hashlib.sha256(
             raw_data
         ).hexdigest()
 
-    @staticmethod
+    # ------------------------------------------------------------------
+    # RECORD HASH
+    # ------------------------------------------------------------------
+
     def _calculate_record_hash(
+        self,
         *,
         evidence: AuditEvidence,
         capture_id: str | None,
     ) -> str:
         """
-        Calculate a deterministic integrity hash over the evidence
-        metadata and the SHA-256 of the raw evidence.
+        Calculate a deterministic hash over the evidence record.
 
-        The raw evidence itself is represented by evidence.sha256.
+        The raw bytes themselves are not duplicated in the canonical
+        metadata structure. Their SHA-256 is included instead.
         """
 
-        canonical_record = {
+        payload = {
             "evidence_id": evidence.evidence_id,
             "capture_id": capture_id,
+
             "tenant_id": evidence.tenant_id,
             "tenant_hash": evidence.tenant_hash,
+
             "project_id": evidence.project_id,
             "instance_name": evidence.instance_name,
+
+            "scope": evidence.scope,
+
             "source": evidence.source,
             "source_path": evidence.source_path,
-            "collected_at": evidence.collected_at.isoformat(),
-            "sha256": evidence.sha256,
-            "size_bytes": evidence.size_bytes,
-            "sequence_start": evidence.sequence_start,
-            "sequence_end": evidence.sequence_end,
+
+            "acquisition_layer":
+                evidence.acquisition_layer,
+
+            "acquired_from":
+                evidence.acquired_from,
+
+            "attribution_method":
+                evidence.attribution_method,
+
+            "collected_at":
+                self._datetime_to_string(
+                    evidence.collected_at
+                ),
+
+            "sha256":
+                self._calculate_raw_sha256(
+                    evidence.raw_data
+                ),
+
+            "size_bytes":
+                evidence.size_bytes,
+
+            "sequence_start":
+                evidence.sequence_start,
+
+            "sequence_end":
+                evidence.sequence_end,
         }
 
-        serialized = json.dumps(
-            canonical_record,
+        return self._hash_canonical_payload(payload)
+
+    @staticmethod
+    def _hash_canonical_payload(
+        payload: dict[str, Any],
+    ) -> str:
+        """
+        Hash a deterministic JSON representation.
+        """
+
+        canonical = json.dumps(
+            payload,
             sort_keys=True,
             separators=(",", ":"),
+            ensure_ascii=False,
         ).encode("utf-8")
 
         return hashlib.sha256(
-            serialized
+            canonical
         ).hexdigest()
 
-    # ==================================================================
-    # Capture manifest persistence
-    # ==================================================================
+    # ------------------------------------------------------------------
+    # CAPTURE EXISTENCE
+    # ------------------------------------------------------------------
 
     def capture_exists(
         self,
@@ -307,33 +376,35 @@ class SQLiteEvidenceRepository:
         *,
         connection: sqlite3.Connection | None = None,
     ) -> bool:
+
+        sql = """
+            SELECT 1
+            FROM capture_manifests
+            WHERE capture_id = ?
+            LIMIT 1
         """
-        Determine whether a capture manifest already exists.
-        """
 
-        owns_connection = connection is None
-
-        if owns_connection:
-            connection = self._connect()
-
-        try:
-
-            cursor = connection.execute(
-                """
-                SELECT 1
-                FROM capture_manifests
-                WHERE capture_id = ?
-                LIMIT 1
-                """,
-                (capture_id,),
+        if connection is not None:
+            return (
+                connection.execute(
+                    sql,
+                    (capture_id,),
+                ).fetchone()
+                is not None
             )
 
-            return cursor.fetchone() is not None
+        with self._connect() as conn:
+            return (
+                conn.execute(
+                    sql,
+                    (capture_id,),
+                ).fetchone()
+                is not None
+            )
 
-        finally:
-
-            if owns_connection:
-                connection.close()
+    # ------------------------------------------------------------------
+    # SAVE MANIFEST
+    # ------------------------------------------------------------------
 
     def save_manifest(
         self,
@@ -341,77 +412,99 @@ class SQLiteEvidenceRepository:
         *,
         connection: sqlite3.Connection | None = None,
     ) -> None:
-        """
-        Insert a new capture manifest.
 
-        This method intentionally uses INSERT rather than
-        INSERT OR REPLACE.
+        actual_sha256 = hashlib.sha256(
+            evidence.raw_data
+        ).hexdigest()
 
-        A capture ID should normally only be created once.
-        """
-
-        manifest_json = manifest.model_dump_json(
-            exclude_none=False
+        if actual_sha256 != evidence.sha256:
+            raise ValueError(
+            f"SHA-256 mismatch for "
+            f"{evidence.evidence_id}"
         )
 
-        owns_connection = connection is None
+        actual_size = len(evidence.raw_data)
 
-        if owns_connection:
-            connection = self._connect()
+        if actual_size != evidence.size_bytes:
+            raise ValueError(
+                f"Evidence size mismatch for "
+                f"{evidence.evidence_id}"
+        )
 
-        try:
+        existing = self.get_evidence_record(
+            evidence.evidence_id
+        )
 
-            connection.execute(
-                """
-                INSERT INTO capture_manifests (
-                    capture_id,
-                    tenant_id,
-                    tenant_hash,
-                    project_id,
-                    instance_name,
-                    started_at,
-                    completed_at,
-                    status,
-                    source_count,
-                    evidence_count,
-                    manifest_json
-                )
-                VALUES (
-                    ?, ?, ?, ?, ?, ?,
-                    ?, ?, ?, ?, ?
-                )
-                """,
-                (
-                    manifest.capture_id,
-                    manifest.tenant_id,
-                    manifest.tenant_hash,
-                    manifest.project_id,
-                    manifest.instance_name,
-                    manifest.started_at.isoformat(),
-                    self._datetime_to_string(
-                        manifest.completed_at
-                    ),
-                    manifest.status.value,
-                    len(manifest.sources),
-                    manifest.evidence_count,
-                    manifest_json,
-                ),
+        if existing is not None:
+            if existing.sha256 != evidence.sha256:
+                raise ValueError(
+                    f"Evidence ID collision with "
+                    f"different SHA-256: "
+                    f"{evidence.evidence_id}"
             )
 
-            if owns_connection:
-                connection.commit()
+        now = self._datetime_to_string(
+            datetime.now(timezone.utc)
+        )
 
-        except Exception:
+        values = (
+            manifest.capture_id,
 
-            if owns_connection:
-                connection.rollback()
+            (
+                manifest.status.value
+                if hasattr(manifest.status, "value")
+                else str(manifest.status)
+            ),
 
-            raise
+            self._datetime_to_string(
+                manifest.started_at
+            ),
 
-        finally:
+            self._datetime_to_string(
+                manifest.completed_at
+            ),
 
-            if owns_connection:
-                connection.close()
+            len(manifest.sources),
+
+            len(manifest.successful_sources),
+
+            len(manifest.failed_sources),
+
+            now,
+            now,
+        )
+
+        sql = """
+            INSERT INTO capture_manifests (
+                capture_id,
+                status,
+                started_at,
+                completed_at,
+                requested_source_count,
+                successful_source_count,
+                failed_source_count,
+                created_at,
+                updated_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """
+
+        if connection is not None:
+            connection.execute(
+                sql,
+                values,
+            )
+            return
+
+        with self.transaction() as conn:
+            conn.execute(
+                sql,
+                values,
+            )
+
+    # ------------------------------------------------------------------
+    # UPDATE MANIFEST
+    # ------------------------------------------------------------------
 
     def update_manifest(
         self,
@@ -419,109 +512,93 @@ class SQLiteEvidenceRepository:
         *,
         connection: sqlite3.Connection | None = None,
     ) -> None:
-        """
-        Update an existing capture manifest.
 
-        This is used after evidence acquisition has completed and the
-        final source results, completion time and overall capture status
-        are known.
-
-        The capture_id itself is never changed.
-
-        Unlike evidence records, capture manifests represent the
-        lifecycle state of an acquisition operation, so updating the
-        existing manifest is intentional.
-        """
-
-        manifest_json = manifest.model_dump_json(
-            exclude_none=False
+        now = self._datetime_to_string(
+            datetime.now(timezone.utc)
         )
 
-        owns_connection = connection is None
+        values = (
+            (
+                manifest.status.value
+                if hasattr(manifest.status, "value")
+                else str(manifest.status)
+            ),
 
-        if owns_connection:
-            connection = self._connect()
+            self._datetime_to_string(
+                manifest.completed_at
+            ),
 
-        try:
+            len(manifest.sources),
 
-            cursor = connection.execute(
-                """
-                UPDATE capture_manifests
-                SET
-                    tenant_id = ?,
-                    tenant_hash = ?,
-                    project_id = ?,
-                    instance_name = ?,
-                    started_at = ?,
-                    completed_at = ?,
-                    status = ?,
-                    source_count = ?,
-                    evidence_count = ?,
-                    manifest_json = ?
-                WHERE capture_id = ?
-                """,
-                (
-                    manifest.tenant_id,
-                    manifest.tenant_hash,
-                    manifest.project_id,
-                    manifest.instance_name,
-                    manifest.started_at.isoformat(),
-                    self._datetime_to_string(
-                        manifest.completed_at
-                    ),
-                    manifest.status.value,
-                    len(manifest.sources),
-                    manifest.evidence_count,
-                    manifest_json,
-                    manifest.capture_id,
-                ),
+            len(manifest.successful_sources),
+
+            len(manifest.failed_sources),
+
+            now,
+
+            manifest.capture_id,
+        )
+
+        sql = """
+            UPDATE capture_manifests
+            SET
+                status = ?,
+                completed_at = ?,
+                requested_source_count = ?,
+                successful_source_count = ?,
+                failed_source_count = ?,
+                updated_at = ?
+            WHERE capture_id = ?
+        """
+
+        if connection is not None:
+            result = connection.execute(
+                sql,
+                values,
             )
 
-            if cursor.rowcount == 0:
+            if result.rowcount != 1:
                 raise ValueError(
-                    "Cannot update unknown capture manifest: "
+                    "Capture manifest does not exist: "
                     f"{manifest.capture_id}"
                 )
 
-            if owns_connection:
-                connection.commit()
+            return
 
-        except Exception:
+        with self.transaction() as conn:
+            result = conn.execute(
+                sql,
+                values,
+            )
 
-            if owns_connection:
-                connection.rollback()
+            if result.rowcount != 1:
+                raise ValueError(
+                    "Capture manifest does not exist: "
+                    f"{manifest.capture_id}"
+                )
 
-            raise
-
-        finally:
-
-            if owns_connection:
-                connection.close()
+    # ------------------------------------------------------------------
+    # GET MANIFEST
+    # ------------------------------------------------------------------
 
     def get_manifest(
         self,
         capture_id: str,
     ) -> sqlite3.Row | None:
-        """
-        Retrieve a capture manifest by capture ID.
-        """
 
         with self._connect() as connection:
-
-            cursor = connection.execute(
+            return connection.execute(
                 """
                 SELECT *
                 FROM capture_manifests
                 WHERE capture_id = ?
                 """,
                 (capture_id,),
-            )
+            ).fetchone()
 
-            return cursor.fetchone()
-
-    # ==================================================================
-    # Evidence persistence
-    # ==================================================================
+    # ------------------------------------------------------------------
+    # SAVE AUDIT
+    # ------------------------------------------------------------------
 
     def save_audit(
         self,
@@ -531,65 +608,56 @@ class SQLiteEvidenceRepository:
         connection: sqlite3.Connection | None = None,
     ) -> str:
         """
-        Persist AuditEvidence.
+        Persist an AuditEvidence object.
 
-        Before persistence, the repository independently recalculates
-        SHA-256 from the raw evidence and compares it with the hash
-        supplied by the collector.
-
-        Integrity boundary:
-
-            Collector
-                |
-                | evidence.sha256
-                v
-            Repository
-                |
-                | SHA-256(raw_data)
-                v
-              Compare
-                |
-                +-- match --> persist
-                |
-                +-- mismatch --> reject
+        This is the compatibility boundary between the audit collector
+        and the canonical evidence storage model.
         """
 
+        if capture_id is not None:
+            if connection is not None:
+                exists = self.capture_exists(
+                    capture_id,
+                    connection=connection,
+                )
+            else:
+                exists = self.capture_exists(
+                    capture_id
+                )
+
+            if not exists:
+                raise ValueError(
+                    "Cannot persist evidence because capture "
+                    f"manifest does not exist: {capture_id}"
+                )
+
         # --------------------------------------------------------------
-        # Validate evidence size
+        # Verify raw evidence before persistence
         # --------------------------------------------------------------
 
-        actual_size = len(
-            evidence.raw_data
-        )
-
-        if actual_size != evidence.size_bytes:
-
-            raise ValueError(
-                "Evidence size does not match raw_data: "
-                f"expected {evidence.size_bytes}, "
-                f"actual {actual_size}"
-            )
-
-        # --------------------------------------------------------------
-        # Independently verify raw evidence SHA-256
-        # --------------------------------------------------------------
-
-        calculated_sha256 = (
+        actual_raw_sha256 = (
             self._calculate_raw_sha256(
                 evidence.raw_data
             )
         )
 
-        if calculated_sha256 != evidence.sha256:
-
+        if evidence.sha256 != actual_raw_sha256:
             raise ValueError(
-                "Evidence SHA-256 verification failed: "
-                f"expected {evidence.sha256}, "
-                f"calculated {calculated_sha256}"
+                "Evidence SHA-256 does not match raw_data"
+            )
+
+        actual_size = len(
+            evidence.raw_data
+        )
+
+        if evidence.size_bytes != actual_size:
+            raise ValueError(
+                "Evidence size_bytes does not match "
+                "raw_data length"
             )
 
         # --------------------------------------------------------------
-        # Calculate record-level integrity hash
+        # Calculate immutable record hash
         # --------------------------------------------------------------
 
         record_sha256 = (
@@ -599,335 +667,308 @@ class SQLiteEvidenceRepository:
             )
         )
 
-        owns_connection = connection is None
+        # --------------------------------------------------------------
+        # Persist
+        # --------------------------------------------------------------
 
-        if owns_connection:
-            connection = self._connect()
+        sql = """
+            INSERT INTO evidence (
+                evidence_id,
+                capture_id,
 
-        try:
+                tenant_id,
+                tenant_hash,
 
-            # ----------------------------------------------------------
-            # Verify capture relationship
-            # ----------------------------------------------------------
+                project_id,
+                instance_name,
 
-            if capture_id is not None:
+                scope,
 
-                cursor = connection.execute(
-                    """
-                    SELECT 1
-                    FROM capture_manifests
-                    WHERE capture_id = ?
-                    LIMIT 1
-                    """,
-                    (capture_id,),
-                )
+                source,
+                source_path,
 
-                if cursor.fetchone() is None:
+                acquisition_layer,
+                acquired_from,
+                attribution_method,
 
-                    raise ValueError(
-                        "Cannot save evidence for unknown "
-                        f"capture_id: {capture_id}"
-                    )
+                collected_at,
 
-            # ----------------------------------------------------------
-            # Insert evidence
-            # ----------------------------------------------------------
+                raw_data,
+                sha256,
+                size_bytes,
 
-            connection.execute(
-                """
-                INSERT INTO evidence (
-                    evidence_id,
-                    capture_id,
-                    tenant_id,
-                    tenant_hash,
-                    project_id,
-                    instance_name,
-                    source,
-                    source_path,
-                    collected_at,
-                    raw_data,
-                    sha256,
-                    size_bytes,
-                    sequence_start,
-                    sequence_end,
-                    record_sha256
-                )
-                VALUES (
-                    ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
-                    ?, ?, ?, ?, ?
-                )
-                """,
-                (
-                    evidence.evidence_id,
-                    capture_id,
-                    evidence.tenant_id,
-                    evidence.tenant_hash,
-                    evidence.project_id,
-                    evidence.instance_name,
-                    evidence.source,
-                    evidence.source_path,
-                    evidence.collected_at.isoformat(),
-                    sqlite3.Binary(
-                        evidence.raw_data
-                    ),
-                    evidence.sha256,
-                    evidence.size_bytes,
-                    evidence.sequence_start,
-                    evidence.sequence_end,
-                    record_sha256,
-                ),
+                sequence_start,
+                sequence_end,
+
+                record_sha256
             )
+            VALUES (
+                ?, ?,
+                ?, ?,
+                ?, ?,
+                ?,
+                ?, ?,
+                ?, ?, ?,
+                ?,
+                ?, ?, ?,
+                ?, ?,
+                ?
+            )
+        """
 
-            if owns_connection:
-                connection.commit()
+        values = (
+            evidence.evidence_id,
+            capture_id,
 
-        except Exception:
+            evidence.tenant_id,
+            evidence.tenant_hash,
 
-            if owns_connection:
-                connection.rollback()
+            evidence.project_id,
+            evidence.instance_name,
 
-            raise
+            evidence.scope,
 
-        finally:
+            evidence.source,
+            evidence.source_path,
 
-            if owns_connection:
-                connection.close()
+            evidence.acquisition_layer,
+            evidence.acquired_from,
+            evidence.attribution_method,
+
+            self._datetime_to_string(
+                evidence.collected_at
+            ),
+
+            sqlite3.Binary(
+                evidence.raw_data
+            ),
+
+            actual_raw_sha256,
+
+            actual_size,
+
+            evidence.sequence_start,
+            evidence.sequence_end,
+
+            record_sha256,
+        )
+
+        if connection is not None:
+            connection.execute(
+                sql,
+                values,
+            )
+            return evidence.evidence_id
+
+        with self.transaction() as conn:
+            conn.execute(
+                sql,
+                values,
+            )
 
         return evidence.evidence_id
 
-    # ==================================================================
-    # Evidence retrieval
-    # ==================================================================
+    # ------------------------------------------------------------------
+    # GET EVIDENCE
+    # ------------------------------------------------------------------
 
     def get_evidence(
         self,
         evidence_id: str,
     ) -> sqlite3.Row | None:
-        """
-        Retrieve one evidence record.
-        """
 
         with self._connect() as connection:
-
-            cursor = connection.execute(
+            return connection.execute(
                 """
                 SELECT *
                 FROM evidence
                 WHERE evidence_id = ?
                 """,
                 (evidence_id,),
-            )
+            ).fetchone()
 
-            return cursor.fetchone()
+    # ------------------------------------------------------------------
+    # LIST EVIDENCE
+    # ------------------------------------------------------------------
 
     def list_evidence(
         self,
         *,
+        capture_id: str | None = None,
         tenant_id: str | None = None,
         instance_name: str | None = None,
         source: str | None = None,
-    ) -> list[sqlite3.Row]:
-        """
-        List evidence records using optional tenant, instance and
-        source filters.
-        """
+    ) -> list[EvidenceRecord]:
 
-        query = """
-            SELECT *
-            FROM evidence
-            WHERE 1 = 1
-        """
+        clauses: list[str] = []
+        values: list[Any] = []
 
-        parameters: list[Any] = []
+        if capture_id is not None:
+            clauses.append("capture_id = ?")
+            values.append(capture_id)
 
         if tenant_id is not None:
-
-            query += """
-                AND tenant_id = ?
-            """
-
-            parameters.append(
-                tenant_id
-            )
+            clauses.append("tenant_id = ?")
+            values.append(tenant_id)
 
         if instance_name is not None:
-
-            query += """
-                AND instance_name = ?
-            """
-
-            parameters.append(
-                instance_name
-            )
+            clauses.append("instance_name = ?")
+            values.append(instance_name)
 
         if source is not None:
+            clauses.append("source = ?")
+            values.append(source)
 
-            query += """
-                AND source = ?
-            """
+        sql = """
+            SELECT
+                evidence_id,
+                capture_id,
 
-            parameters.append(
-                source
-            )
+                tenant_id,
+                tenant_hash,
 
-        query += """
-            ORDER BY collected_at ASC
+                project_id,
+                instance_name,
+
+                scope,
+
+                source,
+                source_path,
+
+                acquisition_layer,
+                acquired_from,
+                attribution_method,
+
+                collected_at,
+
+                raw_data,
+                sha256,
+                size_bytes,
+
+                sequence_start,
+                sequence_end,
+
+                record_sha256
+            FROM evidence
         """
 
-        with self._connect() as connection:
-
-            cursor = connection.execute(
-                query,
-                parameters,
+        if clauses:
+            sql += (
+                " WHERE "
+                + " AND ".join(clauses)
             )
 
-            return cursor.fetchall()
+        sql += """
+            ORDER BY collected_at ASC
+    """
+
+        with self._connect() as connection:
+            rows = connection.execute(
+                sql,
+                values,
+            ).fetchall()
+
+        return [
+            EvidenceRecord(
+                evidence_id=row["evidence_id"],
+                capture_id=row["capture_id"],
+
+                tenant_id=row["tenant_id"],
+                tenant_hash=row["tenant_hash"],
+
+                project_id=row["project_id"],
+                instance_name=row["instance_name"],
+
+                scope=row["scope"],
+
+                source=row["source"],
+                source_path=row["source_path"],
+
+                acquisition_layer=row["acquisition_layer"],
+                acquired_from=row["acquired_from"],
+                attribution_method=row["attribution_method"],
+
+                collected_at=datetime.fromisoformat(
+                row["collected_at"]
+                ),
+
+                raw_data=bytes(
+                    row["raw_data"]
+                ),
+
+                sha256=row["sha256"],
+                size_bytes=row["size_bytes"],
+
+                sequence_start=row["sequence_start"],
+                sequence_end=row["sequence_end"],
+
+                record_sha256=row["record_sha256"],
+            )
+            for row in rows
+        ]
+    # ------------------------------------------------------------------
+    # COUNT
+    # ------------------------------------------------------------------
 
     def count_evidence(self) -> int:
-        """
-        Return the total number of evidence records.
-        """
 
         with self._connect() as connection:
-
-            cursor = connection.execute(
+            row = connection.execute(
                 """
-                SELECT COUNT(*)
+                SELECT COUNT(*) AS count
                 FROM evidence
                 """
-            )
+            ).fetchone()
 
-            return int(
-                cursor.fetchone()[0]
-            )
+            return int(row["count"])
 
-    # ==================================================================
-    # Integrity verification
-    # ==================================================================
+    # ------------------------------------------------------------------
+    # INTEGRITY VERIFICATION
+    # ------------------------------------------------------------------
 
     def verify_evidence_integrity(
         self,
         evidence_id: str,
     ) -> bool:
-        """
-        Verify both integrity levels for one stored evidence record.
 
-        Level 1:
-            SHA-256(raw_data) == stored sha256
-
-        Level 2:
-            SHA-256(canonical metadata) == stored record_sha256
-
-        Returns True only if both checks succeed.
-        """
-
-        row = self.get_evidence(
+        details = self.get_integrity_details(
             evidence_id
         )
 
-        if row is None:
-
-            raise ValueError(
-                f"Evidence not found: {evidence_id}"
-            )
-
-        raw_data = bytes(
-            row["raw_data"]
+        return bool(
+            details["exists"]
+            and details["raw_sha256_matches"]
+            and details["record_sha256_matches"]
+            and details["size_matches"]
         )
 
-        # --------------------------------------------------------------
-        # Level 1: raw evidence integrity
-        # --------------------------------------------------------------
-
-        calculated_raw_sha256 = (
-            self._calculate_raw_sha256(
-                raw_data
-            )
-        )
-
-        raw_integrity_ok = (
-            calculated_raw_sha256
-            == row["sha256"]
-        )
-
-        if not raw_integrity_ok:
-            return False
-
-        # --------------------------------------------------------------
-        # Reconstruct evidence model
-        # --------------------------------------------------------------
-
-        collected_at = datetime.fromisoformat(
-            row["collected_at"]
-        )
-
-        evidence = AuditEvidence(
-            evidence_id=row["evidence_id"],
-            tenant_id=row["tenant_id"],
-            tenant_hash=row["tenant_hash"],
-            project_id=row["project_id"],
-            instance_name=row["instance_name"],
-            scope=(
-                f"{row['project_id']}/"
-                f"{row['instance_name']}"
-            ),
-            source=row["source"],
-            source_path=row["source_path"],
-            collected_at=collected_at,
-            raw_data=raw_data,
-            sha256=row["sha256"],
-            size_bytes=row["size_bytes"],
-            sequence_start=row["sequence_start"],
-            sequence_end=row["sequence_end"],
-        )
-
-        # --------------------------------------------------------------
-        # Level 2: record metadata integrity
-        # --------------------------------------------------------------
-
-        calculated_record_sha256 = (
-            self._calculate_record_hash(
-                evidence=evidence,
-                capture_id=row["capture_id"],
-            )
-        )
-
-        record_integrity_ok = (
-            calculated_record_sha256
-            == row["record_sha256"]
-        )
-
-        return (
-            raw_integrity_ok
-            and record_integrity_ok
-        )
+    # ------------------------------------------------------------------
+    # INTEGRITY DETAILS
+    # ------------------------------------------------------------------
 
     def get_integrity_details(
         self,
         evidence_id: str,
     ) -> dict[str, Any]:
-        """
-        Return detailed integrity verification information.
-
-        Intended for prototype evaluation, testing and dashboard use.
-        """
 
         row = self.get_evidence(
             evidence_id
         )
 
         if row is None:
-
-            raise ValueError(
-                f"Evidence not found: {evidence_id}"
-            )
+            return {
+                "exists": False,
+                "raw_sha256_matches": False,
+                "record_sha256_matches": False,
+                "size_matches": False,
+            }
 
         raw_data = bytes(
             row["raw_data"]
         )
 
         # --------------------------------------------------------------
-        # Raw evidence SHA-256
+        # Verify raw payload
         # --------------------------------------------------------------
 
         calculated_raw_sha256 = (
@@ -936,77 +977,173 @@ class SQLiteEvidenceRepository:
             )
         )
 
-        raw_hash_match = (
-            calculated_raw_sha256
-            == row["sha256"]
+        calculated_size = len(
+            raw_data
+        )
+
+        size_matches = (
+            calculated_size
+            == row["size_bytes"]
+        )
+
+        raw_sha256_matches = (
+            row["sha256"]
+            == calculated_raw_sha256
         )
 
         # --------------------------------------------------------------
-        # Reconstruct evidence object
+        # Reconstruct canonical metadata
         # --------------------------------------------------------------
 
-        evidence = AuditEvidence(
-            evidence_id=row["evidence_id"],
-            tenant_id=row["tenant_id"],
-            tenant_hash=row["tenant_hash"],
-            project_id=row["project_id"],
-            instance_name=row["instance_name"],
-            scope=(
-                f"{row['project_id']}/"
-                f"{row['instance_name']}"
-            ),
-            source=row["source"],
-            source_path=row["source_path"],
-            collected_at=datetime.fromisoformat(
-                row["collected_at"]
-            ),
-            raw_data=raw_data,
-            sha256=row["sha256"],
-            size_bytes=row["size_bytes"],
-            sequence_start=row["sequence_start"],
-            sequence_end=row["sequence_end"],
-        )
+        payload = {
+            "evidence_id":
+                row["evidence_id"],
 
-        # --------------------------------------------------------------
-        # Record SHA-256
-        # --------------------------------------------------------------
+            "capture_id":
+                row["capture_id"],
+
+            "tenant_id":
+                row["tenant_id"],
+
+            "tenant_hash":
+                row["tenant_hash"],
+
+            "project_id":
+                row["project_id"],
+
+            "instance_name":
+                row["instance_name"],
+
+            "scope":
+                row["scope"],
+
+            "source":
+                row["source"],
+
+            "source_path":
+                row["source_path"],
+
+            "acquisition_layer":
+                row["acquisition_layer"],
+
+            "acquired_from":
+                row["acquired_from"],
+
+            "attribution_method":
+                row["attribution_method"],
+
+            "collected_at":
+                row["collected_at"],
+
+            "sha256":
+                calculated_raw_sha256,
+
+            "size_bytes":
+                row["size_bytes"],
+
+            "sequence_start":
+                row["sequence_start"],
+
+            "sequence_end":
+                row["sequence_end"],
+        }
 
         calculated_record_sha256 = (
-            self._calculate_record_hash(
-                evidence=evidence,
-                capture_id=row["capture_id"],
+            self._hash_canonical_payload(
+                payload
             )
         )
 
-        record_hash_match = (
-            calculated_record_sha256
-            == row["record_sha256"]
+        record_sha256_matches = (
+            row["record_sha256"]
+            == calculated_record_sha256
         )
 
         return {
-            "evidence_id": row["evidence_id"],
+            "exists": True,
 
-            "raw_sha256_stored":
+            "stored_raw_sha256":
                 row["sha256"],
 
-            "raw_sha256_calculated":
+            "calculated_raw_sha256":
                 calculated_raw_sha256,
 
-            "raw_sha256_match":
-                raw_hash_match,
+            "raw_sha256_matches":
+                raw_sha256_matches,
 
-            "record_sha256_stored":
+            "stored_record_sha256":
                 row["record_sha256"],
 
-            "record_sha256_calculated":
+            "calculated_record_sha256":
                 calculated_record_sha256,
 
-            "record_sha256_match":
-                record_hash_match,
+            "record_sha256_matches":
+                record_sha256_matches,
 
-            "integrity_verified":
-                (
-                    raw_hash_match
-                    and record_hash_match
-                ),
+            "stored_size":
+                row["size_bytes"],
+
+            "calculated_size":
+                calculated_size,
+
+            "size_matches":
+                size_matches,
         }
+
+    # ------------------------------------------------------------------
+    # EVIDENCE RECORD
+    # ------------------------------------------------------------------
+
+    def get_evidence_record(
+        self,
+        evidence_id: str,
+    ) -> EvidenceRecord | None:
+        """
+        Return persisted evidence as an EvidenceRecord.
+
+        This converts the SQLite representation back into the
+        canonical domain representation.
+        """
+
+        row = self.get_evidence(
+            evidence_id
+        )
+
+        if row is None:
+            return None
+
+        return EvidenceRecord(
+            evidence_id=row["evidence_id"],
+            capture_id=row["capture_id"],
+
+            tenant_id=row["tenant_id"],
+            tenant_hash=row["tenant_hash"],
+
+            project_id=row["project_id"],
+            instance_name=row["instance_name"],
+
+            scope=row["scope"],
+
+            source=row["source"],
+            source_path=row["source_path"],
+
+            acquisition_layer=row["acquisition_layer"],
+            acquired_from=row["acquired_from"],
+            attribution_method=row["attribution_method"],
+
+            collected_at=datetime.fromisoformat(
+                row["collected_at"]
+            ),
+
+            raw_data=bytes(
+                row["raw_data"]
+            ),
+
+            sha256=row["sha256"],
+            size_bytes=row["size_bytes"],
+
+            sequence_start=row["sequence_start"],
+            sequence_end=row["sequence_end"],
+
+            record_sha256=row["record_sha256"],
+        )

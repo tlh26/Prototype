@@ -1,5 +1,5 @@
-from evidenceAgent.agent import EvidenceAgent
-from evidenceAgent.config import AgentConfig
+from .agent import EvidenceAgent
+from .config import AgentConfig
 
 
 def main():

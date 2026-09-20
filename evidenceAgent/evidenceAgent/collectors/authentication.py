@@ -4,7 +4,7 @@ import re
 import uuid
 from pathlib import Path
 
-from evidenceAgent.models import (
+from ..models import (
     EvidenceEvent,
     EvidenceType,
     EventType,

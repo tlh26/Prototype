@@ -2,16 +2,16 @@ from __future__ import annotations
 
 import time
 
-from evidenceAgent.client import CentralEvidenceClient
-from evidenceAgent.collectors.access import AccessCollector
-from evidenceAgent.collectors.authentication import (
+from .client import CentralEvidenceClient
+from .collectors.access import AccessCollector
+from .collectors.authentication import (
     AuthenticationCollector,
 )
-from evidenceAgent.collectors.files import FileCollector
-from evidenceAgent.config import AgentConfig
-from evidenceAgent.models import EvidenceEvent
-from evidenceAgent.spool import EvidenceSpool
-from evidenceAgent.state import AgentState
+from .collectors.files import FileCollector
+from .config import AgentConfig
+from .models import EvidenceEvent
+from .spool import EvidenceSpool
+from .state import AgentState
 
 
 class EvidenceAgent:
@@ -20,15 +20,14 @@ class EvidenceAgent:
         self,
         config: AgentConfig,
     ):
-
         self.config = config
 
         self.state = AgentState(
-            config.state_dir
+            config.state_directory
         )
 
         self.spool = EvidenceSpool(
-            f"{config.state_dir}/spool"
+            f"{config.state_directory}/spool"
         )
 
         self.client = CentralEvidenceClient(
@@ -58,11 +57,15 @@ class EvidenceAgent:
             tenant_id=config.tenant_id,
             instance_name=config.instance_name,
             agent_id=config.agent_id,
-            paths=config.watch_paths,
+            paths=[config.watched_directory],
             state=self.state,
         )
 
     def collect_once(self):
+        """
+        Run one evidence collection cycle and then attempt to
+        drain previously spooled evidence.
+        """
 
         collectors = [
             self.authentication,
@@ -86,12 +89,18 @@ class EvidenceAgent:
                     f"{collector.__class__.__name__}: {exc}"
                 )
 
-        self._retry_spool()
+        self.retry_spool()
 
     def _process(
         self,
         event: EvidenceEvent,
     ):
+        """
+        Persist an event locally before attempting transmission.
+
+        This ensures that an event is never lost simply because
+        Central is temporarily unavailable.
+        """
 
         path = self.spool.store(
             event
@@ -107,41 +116,71 @@ class EvidenceAgent:
                 path
             )
 
+            print(
+                f"[agent] submitted evidence: "
+                f"{event.event_id}"
+            )
+
         except Exception as exc:
 
             print(
-                f"[agent] central storage unavailable: "
-                f"{exc}"
+                f"[agent] central storage unavailable; "
+                f"evidence spooled: {event.event_id}: {exc}"
             )
 
-    def _retry_spool(self):
+    def retry_spool(self):
+        """
+        Attempt to submit all locally spooled evidence.
 
-        for path in self.spool.pending():
+        A spool entry is removed only after Central successfully
+        acknowledges the event.
+
+        If Central is still unavailable, the entry remains on disk
+        and will be retried during the next collection cycle.
+        """
+
+        pending = self.spool.pending()
+
+        if not pending:
+            return
+
+        print(
+            f"[agent] retrying {len(pending)} "
+            f"spooled evidence event(s)"
+        )
+
+        for path in pending:
 
             try:
 
-                import json
-
-                payload = json.loads(
-                    path.read_text(
-                        encoding="utf-8"
-                    )
+                event = self.spool.load(
+                    path
                 )
 
-                # For a production implementation,
-                # deserialize into EvidenceEvent.
-                # This prototype leaves the original
-                # spool entry until the server acknowledges
-                # the event.
+                if not isinstance(event, EvidenceEvent):
+                    raise TypeError(
+                    f"Expected EvidenceEvent in instance spool, "
+                    f"got {type(event).__name__}"
+                    )
+
+                self.client.submit(
+                    event
+                )
+
+                self.spool.remove(
+                    path
+                )
 
                 print(
-                    f"[agent] pending evidence: {path}"
+                    f"[agent] drained spool: "
+                    f"{event.event_id}"
                 )
 
             except Exception as exc:
 
                 print(
-                    f"[agent] spool error: {exc}"
+                    f"[agent] spool retry failed: "
+                    f"{path.name}: {exc}"
                 )
 
     def run(self):
@@ -157,5 +196,5 @@ class EvidenceAgent:
             self.collect_once()
 
             time.sleep(
-                self.config.poll_interval
+                self.config.interval
             )

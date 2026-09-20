@@ -12,6 +12,10 @@ from central.database import (
 from central.repository import EvidenceRepository
 from central.schemas import EvidenceEventRequest
 from central.security import verify_api_key
+from evidenceAgent.evidenceAgent.transportModels import EvidenceBatch
+from central.genericRepo import GenericEvidenceRepository
+
+from central.ingest import IngestionError, ingest_batch
 
 
 config = CentralConfig()
@@ -211,6 +215,53 @@ def get_event(
         ).decode("ascii")
 
         return event
+
+    finally:
+        connection.close()
+
+
+
+@app.post("/api/v1/evidence/batches")
+def submit_batch(
+    batch: EvidenceBatch,
+    x_api_key: str | None = Header(default=None),
+):
+    verify_api_key(
+        x_api_key,
+        config,
+    )
+
+    connection = get_connection(config)
+
+    try:
+        repository = GenericEvidenceRepository(
+            connection
+        )
+
+        try:
+            stored = ingest_batch(
+                batch=batch,
+                repository=repository,
+            )
+
+        except IngestionError as exc:
+            raise HTTPException(
+                status_code=400,
+                detail=str(exc),
+            ) from exc
+
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=400,
+                detail=str(exc),
+            ) from exc
+
+        return {
+            "status": "accepted",
+            "agent_id": batch.agent_id,
+            "received": len(batch.evidence),
+            "stored": stored,
+        }
 
     finally:
         connection.close()

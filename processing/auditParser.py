@@ -1,19 +1,18 @@
-# processing/audit_parser.py
+# processing/auditParser.py
+
 from __future__ import annotations
+
 import re
-from dataclasses import dataclass
+
 from collections import defaultdict
+from dataclasses import dataclass
 
 
 @dataclass(frozen=True)
 class AuditRecord:
-
     record_type: str
-
     timestamp: str
-
     sequence: int
-
     fields: dict[str, str]
 
 
@@ -26,22 +25,42 @@ _AUDIT_HEADER = re.compile(
 
 
 class AuditParser:
+    """
+    Semantic parser for already-acquired Linux audit records.
+
+    Acquisition and raw event reconstruction are intentionally handled
+    by acquisition.collectors.audit.AuditCollector.
+
+    This parser converts raw audit lines into structured records for
+    processing and correlation.
+    """
 
     def parse_line(
         self,
         line: str,
     ) -> AuditRecord | None:
-
-        match = _AUDIT_HEADER.search(line)
+        match = _AUDIT_HEADER.search(
+            line
+        )
 
         if not match:
             return None
 
-        record_type = match.group("type")
-        timestamp = match.group("timestamp")
-        sequence = int(match.group("sequence"))
+        record_type = match.group(
+            "type"
+        )
 
-        fields = self._parse_fields(line)
+        timestamp = match.group(
+            "timestamp"
+        )
+
+        sequence = int(
+            match.group("sequence")
+        )
+
+        fields = self._parse_fields(
+            line
+        )
 
         return AuditRecord(
             record_type=record_type,
@@ -54,7 +73,6 @@ class AuditParser:
     def _parse_fields(
         line: str,
     ) -> dict[str, str]:
-
         fields: dict[str, str] = {}
 
         for token in line.split():
@@ -74,10 +92,11 @@ class AuditParser:
         self,
         records: list[AuditRecord],
     ) -> dict[int, list[AuditRecord]]:
-
         grouped = defaultdict(list)
 
         for record in records:
-            grouped[record.sequence].append(record)
+            grouped[
+                record.sequence
+            ].append(record)
 
         return dict(grouped)
