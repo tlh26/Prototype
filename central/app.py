@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import base64
 import hashlib
 import json
@@ -12,10 +14,9 @@ from central.database import (
 from central.repository import EvidenceRepository
 from central.schemas import EvidenceEventRequest
 from central.security import verify_api_key
-from evidenceAgent.evidenceAgent.transportModels import EvidenceBatch
 from central.genericRepo import GenericEvidenceRepository
-
 from central.ingest import IngestionError, ingest_batch
+from evidenceAgent.evidenceAgent.transportModels import EvidenceBatch
 
 
 config = CentralConfig()
@@ -33,6 +34,7 @@ def health():
     return {
         "status": "ok",
         "service": "evidence-central",
+        "database": "postgresql",
     }
 
 
@@ -84,8 +86,6 @@ def submit_event(
                 "event_id": request.event_id,
             }
 
-        event = request
-
         connection.execute(
             """
             INSERT INTO evidence_events (
@@ -107,29 +107,33 @@ def submit_event(
                 sha256,
                 created_at
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (
+                %s, %s, %s, %s, %s, %s, %s,
+                %s, %s, %s, %s, %s, %s, %s,
+                %s, %s, %s
+            )
             """,
             (
-                event.event_id,
-                event.tenant_id,
-                event.instance_name,
-                event.evidence_type,
-                event.event_type,
-                event.timestamp.isoformat(),
-                event.actor,
-                event.uid,
-                event.resource,
-                event.source,
-                event.source_path,
+                request.event_id,
+                request.tenant_id,
+                request.instance_name,
+                request.evidence_type,
+                request.event_type,
+                request.timestamp.isoformat(),
+                request.actor,
+                request.uid,
+                request.resource,
+                request.source,
+                request.source_path,
                 json.dumps(
-                    event.details,
+                    request.details,
                     sort_keys=True,
                 ),
-                event.sequence,
-                event.agent_id,
+                request.sequence,
+                request.agent_id,
                 raw_data,
-                event.sha256,
-                event.created_at.isoformat(),
+                request.sha256,
+                request.created_at.isoformat(),
             ),
         )
 
@@ -137,9 +141,13 @@ def submit_event(
 
         return {
             "status": "stored",
-            "event_id": event.event_id,
-            "sha256": event.sha256,
+            "event_id": request.event_id,
+            "sha256": request.sha256,
         }
+
+    except Exception:
+        connection.rollback()
+        raise
 
     finally:
         connection.close()
@@ -170,10 +178,7 @@ def list_events(
 
         return {
             "count": len(rows),
-            "events": [
-                dict(row)
-                for row in rows
-            ],
+            "events": rows,
         }
 
     finally:
@@ -197,7 +202,9 @@ def get_event(
             connection
         )
 
-        row = repository.get(event_id)
+        row = repository.get(
+            event_id
+        )
 
         if not row:
             raise HTTPException(
@@ -207,18 +214,14 @@ def get_event(
 
         event = dict(row)
 
-        # SQLite stores raw evidence as BLOB.
-        # The API exposes it as Base64 so that the
-        # original bytes can safely travel through JSON.
         event["raw_data"] = base64.b64encode(
-            event["raw_data"]
+            bytes(event["raw_data"])
         ).decode("ascii")
 
         return event
 
     finally:
         connection.close()
-
 
 
 @app.post("/api/v1/evidence/batches")
@@ -245,12 +248,16 @@ def submit_batch(
             )
 
         except IngestionError as exc:
+            connection.rollback()
+
             raise HTTPException(
                 status_code=400,
                 detail=str(exc),
             ) from exc
 
         except ValueError as exc:
+            connection.rollback()
+
             raise HTTPException(
                 status_code=400,
                 detail=str(exc),

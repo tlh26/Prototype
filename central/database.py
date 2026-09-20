@@ -1,242 +1,164 @@
 from __future__ import annotations
 
-import sqlite3
-from pathlib import Path
+from psycopg import Connection
+from psycopg.rows import dict_row
+
 from central.config import CentralConfig
 
-class CentralDatabase:
 
-    def __init__(
-        self,
-        path: str = "data/central.db",
-    ):
+def get_connection(
+    config: CentralConfig,
+) -> Connection:
+    """
+    Open a PostgreSQL connection to the central evidence database.
 
-        self.path = Path(path)
+    Connections use dict_row so SELECT results behave similarly
+    to the previous sqlite3.Row objects used by the repositories.
+    """
 
-        self.path.parent.mkdir(
-            parents=True,
-            exist_ok=True,
-        )
+    return Connection.connect(
+        config.database_url,
+        row_factory=dict_row,
+    )
 
-        self._initialize()
 
-    def connect(self):
+def initialise_database(
+    config: CentralConfig,
+) -> None:
+    """
+    Verify that the PostgreSQL central evidence schema exists.
 
-        connection = sqlite3.connect(
-            self.path
-        )
+    The actual evidence tables are created during the initial
+    PostgreSQL deployment/migration. CREATE IF NOT EXISTS is retained
+    so application startup remains safe and repeatable.
+    """
 
-        connection.row_factory = sqlite3.Row
+    with get_connection(config) as connection:
+        with connection.cursor() as cursor:
 
-        return connection
-
-    def _initialize(self):
-
-        with self.connect() as db:
-
-            db.execute(
+            cursor.execute(
                 """
-                CREATE TABLE IF NOT EXISTS evidence (
-                    evidence_id TEXT PRIMARY KEY,
-
+                CREATE TABLE IF NOT EXISTS evidence_events (
+                    event_id TEXT PRIMARY KEY,
                     tenant_id TEXT NOT NULL,
-
                     instance_name TEXT NOT NULL,
-
-                    agent_id TEXT NOT NULL,
-
                     evidence_type TEXT NOT NULL,
-
                     event_type TEXT NOT NULL,
-
-                    event_timestamp TEXT NOT NULL,
-
+                    timestamp TEXT NOT NULL,
+                    actor TEXT,
+                    uid INTEGER,
+                    resource TEXT,
                     source TEXT NOT NULL,
-
                     source_path TEXT,
-
+                    details_json TEXT NOT NULL,
                     sequence INTEGER NOT NULL,
-
-                    object_key TEXT NOT NULL,
-
+                    agent_id TEXT NOT NULL,
+                    raw_data BYTEA NOT NULL,
                     sha256 TEXT NOT NULL,
-
-                    size_bytes INTEGER NOT NULL,
-
-                    received_at TEXT NOT NULL,
-
-                    record_sha256 TEXT NOT NULL,
-
-                    UNIQUE (
-                        tenant_id,
-                        agent_id,
-                        sequence
-                    )
+                    created_at TEXT NOT NULL
                 )
                 """
             )
 
-            db.execute(
+            cursor.execute(
                 """
                 CREATE INDEX IF NOT EXISTS
-                idx_central_tenant
-                ON evidence(tenant_id)
+                    idx_evidence_tenant
+                ON evidence_events(tenant_id)
                 """
             )
 
-            db.execute(
+            cursor.execute(
                 """
                 CREATE INDEX IF NOT EXISTS
-                idx_central_instance
-                ON evidence(instance_name)
+                    idx_evidence_instance
+                ON evidence_events(
+                    tenant_id,
+                    instance_name
+                )
                 """
             )
 
-            db.execute(
+            cursor.execute(
                 """
                 CREATE INDEX IF NOT EXISTS
-                idx_central_hash
-                ON evidence(sha256)
+                    idx_evidence_timestamp
+                ON evidence_events(timestamp)
                 """
             )
 
-            db.execute(
+            cursor.execute(
                 """
                 CREATE INDEX IF NOT EXISTS
-                idx_central_event_type
-                ON evidence(event_type)
+                    idx_evidence_type
+                ON evidence_events(evidence_type)
                 """
             )
 
+            cursor.execute(
+                """
+                CREATE INDEX IF NOT EXISTS
+                    idx_evidence_hash
+                ON evidence_events(sha256)
+                """
+            )
 
-def get_connection(config: CentralConfig) -> sqlite3.Connection:
-    path = Path(config.database_path)
+            cursor.execute(
+                """
+                CREATE TABLE IF NOT EXISTS evidence_records (
+                    evidence_id TEXT PRIMARY KEY,
+                    tenant_id TEXT,
+                    tenant_hash TEXT,
+                    project_id TEXT,
+                    instance_name TEXT,
+                    scope TEXT,
+                    source TEXT NOT NULL,
+                    source_path TEXT NOT NULL,
+                    acquisition_layer TEXT NOT NULL,
+                    acquired_from TEXT NOT NULL,
+                    attribution_method TEXT NOT NULL,
+                    collected_at TEXT NOT NULL,
+                    raw_data BYTEA NOT NULL,
+                    sha256 TEXT NOT NULL,
+                    size_bytes INTEGER NOT NULL,
+                    sequence_start INTEGER,
+                    sequence_end INTEGER,
+                    capture_id TEXT,
+                    record_sha256 TEXT
+                )
+                """
+            )
 
-    path.parent.mkdir(
-        parents=True,
-        exist_ok=True,
-    )
+            cursor.execute(
+                """
+                CREATE INDEX IF NOT EXISTS
+                    idx_evidence_records_tenant
+                ON evidence_records(tenant_id)
+                """
+            )
 
-    connection = sqlite3.connect(
-        path,
-        check_same_thread=False,
-    )
+            cursor.execute(
+                """
+                CREATE INDEX IF NOT EXISTS
+                    idx_evidence_records_instance
+                ON evidence_records(instance_name)
+                """
+            )
 
-    connection.row_factory = sqlite3.Row
+            cursor.execute(
+                """
+                CREATE INDEX IF NOT EXISTS
+                    idx_evidence_records_source
+                ON evidence_records(source)
+                """
+            )
 
-    return connection
-
-
-def initialise_database(config: CentralConfig) -> None:
-    connection = get_connection(config)
-
-    try:
-        connection.executescript(
-            """
-            CREATE TABLE IF NOT EXISTS evidence_events (
-                event_id TEXT PRIMARY KEY,
-                tenant_id TEXT NOT NULL,
-                instance_name TEXT NOT NULL,
-                evidence_type TEXT NOT NULL,
-                event_type TEXT NOT NULL,
-                timestamp TEXT NOT NULL,
-                actor TEXT,
-                uid INTEGER,
-                resource TEXT,
-                source TEXT NOT NULL,
-                source_path TEXT,
-                details_json TEXT NOT NULL,
-                sequence INTEGER NOT NULL,
-                agent_id TEXT NOT NULL,
-                raw_data BLOB NOT NULL,
-                sha256 TEXT NOT NULL,
-                created_at TEXT NOT NULL
-            );
-
-            CREATE INDEX IF NOT EXISTS
-                idx_evidence_tenant
-            ON evidence_events(tenant_id);
-
-            CREATE INDEX IF NOT EXISTS
-                idx_evidence_instance
-            ON evidence_events(
-                tenant_id,
-                instance_name
-            );
-
-            CREATE INDEX IF NOT EXISTS
-                idx_evidence_timestamp
-            ON evidence_events(timestamp);
-
-            CREATE INDEX IF NOT EXISTS
-                idx_evidence_type
-            ON evidence_events(evidence_type);
-
-            CREATE INDEX IF NOT EXISTS
-                idx_evidence_hash
-            ON evidence_events(sha256);
-            """
-        )
-
-        connection.execute(
-            """
-        CREATE TABLE IF NOT EXISTS evidence_records (
-            evidence_id TEXT PRIMARY KEY,
-            tenant_id TEXT,
-            tenant_hash TEXT,
-            project_id TEXT,
-            instance_name TEXT,
-            scope TEXT,
-            source TEXT NOT NULL,
-            source_path TEXT NOT NULL,
-            acquisition_layer TEXT NOT NULL,
-            acquired_from TEXT NOT NULL,
-            attribution_method TEXT NOT NULL,
-            collected_at TEXT NOT NULL,
-            raw_data BLOB NOT NULL,
-            sha256 TEXT NOT NULL,
-            size_bytes INTEGER NOT NULL,
-            sequence_start INTEGER,
-            sequence_end INTEGER,
-            capture_id TEXT,
-            record_sha256 TEXT
-        )
-        """
-    )
-
-        connection.execute(
-        """
-        CREATE INDEX IF NOT EXISTS
-            idx_evidence_records_tenant
-            ON evidence_records(tenant_id)
-        """
-        )
-
-        connection.execute(
-        """
-        CREATE INDEX IF NOT EXISTS
-            idx_evidence_records_instance
-            ON evidence_records(instance_name)
-        """
-        )
-
-        connection.execute(
-        """
-        CREATE INDEX IF NOT EXISTS
-            idx_evidence_records_source
-            ON evidence_records(source)
-        """
-        )
-
-        connection.execute(
-        """
-        CREATE INDEX IF NOT EXISTS
-            idx_evidence_records_collected_at
-            ON evidence_records(collected_at)
-        """
-        )
+            cursor.execute(
+                """
+                CREATE INDEX IF NOT EXISTS
+                    idx_evidence_records_collected_at
+                ON evidence_records(collected_at)
+                """
+            )
 
         connection.commit()
-
-    finally:
-        connection.close()
