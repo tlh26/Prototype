@@ -13,15 +13,25 @@ from dashboard.services.factory import (
     build_evidence_service,
     build_timeline_service,
 )
+from dashboard.services.factory import (
+    build_correlation_service,
+    build_evidence_service,
+    build_tenant_service,
+    build_timeline_service,
+    build_overview_service
+)
 
 
 def index(request):
-    """
-    Dashboard foundation / D1 smoke view.
-    """
+    service = build_overview_service()
+    overview = service.build()
+
     return render(
         request,
         "dashboard/overview.html",
+        {
+            "overview": overview,
+        },
     )
 
 
@@ -116,5 +126,18 @@ def timeline(request):
             "entries": entries,
             "tenant_id": tenant_id,
             "instance_name": instance_name,
+        },
+    )
+
+def tenants(request):
+    service = build_tenant_service()
+
+    tenant_summaries = service.list_tenants()
+
+    return render(
+        request,
+        "dashboard/tenants.html",
+        {
+            "tenants": tenant_summaries,
         },
     )

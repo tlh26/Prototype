@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Evidence Correlation Dashboard</title>
+</head>
+
+<body>
+    <h1>Evidence Correlation Dashboard</h1>
+
+    <p>
+        Overview of tenants, evidence, and correlation results
+        available in the central evidence store.
+    </p>
+
+    <hr>
+
+    <section>
+        <h2>System Summary</h2>
+
+        <ul>
+            <li>
+                <strong>Tenants:</strong>
+                {{ overview.tenant_count }}
+            </li>
+
+            <li>
+                <strong>Evidence processed:</strong>
+                {{ overview.evidence_count }}
+            </li>
+
+            <li>
+                <strong>Correlation findings:</strong>
+                {{ overview.finding_count }}
+            </li>
+
+            <li>
+                <strong>Entities:</strong>
+                {{ overview.entity_count }}
+            </li>
+
+            <li>
+                <strong>Relationships:</strong>
+                {{ overview.relationship_count }}
+            </li>
+        </ul>
+    </section>
+
+    <hr>
+
+    <section>
+        <h2>Tenants</h2>
+
+        {% if overview.tenants %}
+        {% for tenant in overview.tenants %}
+        <article>
+            <h3>{{ tenant.tenant_id }}</h3>
+
+            <ul>
+                <li>
+                    <strong>Evidence:</strong>
+                    {{ tenant.evidence_count }}
+                </li>
+
+                <li>
+                    <strong>Events:</strong>
+                    {{ tenant.event_count }}
+                </li>
+
+                <li>
+                    <strong>Forensic records:</strong>
+                    {{ tenant.record_count }}
+                </li>
+
+                <li>
+                    <strong>Instances:</strong>
+                    {{ tenant.instances|length }}
+                </li>
+            </ul>
+
+            <p>
+                <a href="{% url 'dashboard:evidence' %}?tenant_id={{ tenant.tenant_id }}">
+                    Evidence
+                </a>
+                |
+                <a href="{% url 'dashboard:correlations' %}?tenant_id={{ tenant.tenant_id }}">
+                    Correlations
+                </a>
+                |
+                <a href="{% url 'dashboard:timeline' %}?tenant_id={{ tenant.tenant_id }}">
+                    Timeline
+                </a>
+            </p>
+        </article>
+
+        {% if not forloop.last %}
+        <hr>
+        {% endif %}
+        {% endfor %}
+        {% else %}
+        <p>
+            No tenants were found in the central evidence store.
+        </p>
+        {% endif %}
+    </section>
+
+    <hr>
+
+    <nav>
+        <h2>Dashboard</h2>
+
+        <ul>
+            <li>
+                <a href="{% url 'dashboard:tenants' %}">
+                    Tenant overview
+                </a>
+            </li>
+
+            <li>
+                <a href="{% url 'dashboard:evidence' %}">
+                    Evidence
+                </a>
+            </li>
+
+            <li>
+                <a href="{% url 'dashboard:correlations' %}">
+                    Correlations
+                </a>
+            </li>
+
+            <li>
+                <a href="{% url 'dashboard:timeline' %}">
+                    Timeline
+                </a>
+            </li>
+        </ul>
+    </nav>
+</body>
+
+</html>

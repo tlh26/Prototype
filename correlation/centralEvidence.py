@@ -338,7 +338,27 @@ class PostgreSQLCorrelationSource:
             capture_id=row["capture_id"],
             record_sha256=row["record_sha256"],
         )
+    
+    def fetch_tenants(self) -> tuple[str, ...]:
+        query = """
+            SELECT DISTINCT tenant_id
+            FROM (
+                SELECT tenant_id
+                FROM evidence_events
 
+                UNION
+
+                SELECT tenant_id
+                FROM evidence_records
+            ) AS tenants
+            WHERE tenant_id IS NOT NULL
+            ORDER BY tenant_id
+        """
+
+        with get_connection(self.config) as connection:
+            rows = connection.execute(query).fetchall()
+
+        return tuple(row["tenant_id"] for row in rows)
 
 # Backwards-compatible name while the codebase transitions.
 CentralEvidenceReader = PostgreSQLCorrelationSource

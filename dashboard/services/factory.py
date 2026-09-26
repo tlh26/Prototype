@@ -15,6 +15,8 @@ from dashboard.services.evidence import EvidenceService
 from .correlation import CorrelationService
 from correlation.timeline import EvidenceTimeline
 from dashboard.services.timeline import TimelineService
+from dashboard.services.tenants import TenantService
+from dashboard.services.overview import OverviewService
 
 
 def _setting(name: str, default):
@@ -95,4 +97,19 @@ def build_timeline_service() -> TimelineService:
     return TimelineService(
         correlation_service=build_correlation_service(),
         timeline=EvidenceTimeline(),
+    )
+
+@lru_cache(maxsize=1)
+def build_tenant_service() -> TenantService:
+    return TenantService(
+        source=build_correlation_source(),
+        evidence_limit=_setting("DASHBOARD_EVIDENCE_LIMIT", 100),
+    )
+
+@lru_cache(maxsize=1)
+def build_overview_service() -> OverviewService:
+    return OverviewService(
+        tenant_service=build_tenant_service(),
+        correlation_service=build_correlation_service(),
+        evidence_limit=_setting("DASHBOARD_EVIDENCE_LIMIT", 100),
     )
