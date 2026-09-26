@@ -8,6 +8,12 @@ from dashboard.services.factory import (
     build_evidence_service,
 )
 
+from dashboard.services.factory import (
+    build_correlation_service,
+    build_evidence_service,
+    build_timeline_service,
+)
+
 
 def index(request):
     """
@@ -89,5 +95,26 @@ def evidence_detail(request, evidence_id: str):
         "dashboard/evidence_detail.html",
         {
             "evidence": evidence_item,
+        },
+    )
+
+def timeline(request):
+    tenant_id = request.GET.get("tenant_id") or None
+    instance_name = request.GET.get("instance_name") or None
+
+    service = build_timeline_service()
+    entries = service.build(
+        tenant_id=tenant_id,
+        instance_name=instance_name,
+        limit=100,
+    )
+
+    return render(
+        request,
+        "dashboard/timeline.html",
+        {
+            "entries": entries,
+            "tenant_id": tenant_id,
+            "instance_name": instance_name,
         },
     )

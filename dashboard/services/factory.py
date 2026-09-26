@@ -13,6 +13,8 @@ from correlation.relationships import RelationshipMapper
 from correlation.rules import SameTenantTemporalRule
 from dashboard.services.evidence import EvidenceService
 from .correlation import CorrelationService
+from correlation.timeline import EvidenceTimeline
+from dashboard.services.timeline import TimelineService
 
 
 def _setting(name: str, default):
@@ -86,4 +88,11 @@ def build_evidence_service() -> EvidenceService:
     return EvidenceService(
         source=build_correlation_source(),
         evidence_limit=_setting("DASHBOARD_EVIDENCE_LIMIT", 100),
+    )
+
+@lru_cache(maxsize=1)
+def build_timeline_service() -> TimelineService:
+    return TimelineService(
+        correlation_service=build_correlation_service(),
+        timeline=EvidenceTimeline(),
     )

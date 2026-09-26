@@ -13,5 +13,6 @@ urlpatterns = [
         views.evidence_detail,
         name="evidence_detail",
     ),
+    path("timeline/", views.timeline, name="timeline"),
 ]
 

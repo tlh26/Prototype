@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Evidence Timeline</title>
+</head>
+
+<body>
+    <h1>Evidence Timeline</h1>
+
+    <form method="get">
+        <label for="tenant_id">Tenant:</label>
+        <input type="text" id="tenant_id" name="tenant_id" value="{{ tenant_id|default:'' }}" placeholder="tenant-a">
+
+        <label for="instance_name">Instance:</label>
+        <input type="text" id="instance_name" name="instance_name" value="{{ instance_name|default:'' }}"
+            placeholder="web-a">
+
+        <button type="submit">Filter</button>
+
+        <a href="{% url 'dashboard:timeline' %}">Clear</a>
+    </form>
+
+    <hr>
+
+    <section>
+        <h2>Timeline Summary</h2>
+
+        <ul>
+            <li>
+                <strong>Timeline entries:</strong>
+                {{ entries|length }}
+            </li>
+        </ul>
+    </section>
+
+    <hr>
+
+    <section>
+        <h2>Chronological Evidence</h2>
+
+        {% if entries %}
+        {% for entry in entries %}
+        <article>
+            <h3>
+                {{ entry.timestamp }}
+            </h3>
+
+            <p>
+                <strong>Evidence ID:</strong>
+                <code>{{ entry.evidence_id }}</code>
+            </p>
+
+            <p>
+                <strong>Tenant:</strong>
+                {{ entry.evidence.tenant_id|default:"—" }}
+            </p>
+
+            <p>
+                <strong>Layer:</strong>
+                {{ entry.evidence.layer.value }}
+            </p>
+
+            <p>
+                <strong>Evidence type:</strong>
+                {{ entry.evidence.evidence_type }}
+            </p>
+
+            <p>
+                <strong>Event type:</strong>
+                {{ entry.evidence.event_type }}
+            </p>
+
+            <p>
+                <strong>Instance:</strong>
+                {{ entry.evidence.instance_name|default:"—" }}
+            </p>
+
+            <p>
+                <strong>Source:</strong>
+                {{ entry.evidence.provenance.source_table|default:"—" }}
+            </p>
+
+            <p>
+                <a href="{% url 'dashboard:evidence_detail' entry.evidence_id %}">
+                    View evidence detail
+                </a>
+            </p>
+        </article>
+
+        {% if not forloop.last %}
+        <hr>
+        {% endif %}
+        {% endfor %}
+        {% else %}
+        <p>
+            No timestamped evidence is available for the selected scope.
+        </p>
+        {% endif %}
+    </section>
+</body>
+
+</html>
