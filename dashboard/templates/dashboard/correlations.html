@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Evidence Correlations</title>
+</head>
+
+<body>
+    <h1>Evidence Correlations</h1>
+
+    <form method="get">
+        <label for="tenant_id">
+            Tenant:
+        </label>
+
+        <input type="text" id="tenant_id" name="tenant_id" value="{{ tenant_id|default:'' }}" placeholder="tenant-a">
+
+        <label for="instance_name">
+            Instance:
+        </label>
+
+        <input type="text" id="instance_name" name="instance_name" value="{{ instance_name|default:'' }}"
+            placeholder="web-a">
+
+        <button type="submit">Filter</button>
+
+        <a href="{% url 'dashboard:correlations' %}">
+            Clear
+        </a>
+    </form>
+
+    <hr>
+
+    <section>
+        <h2>Correlation Summary</h2>
+
+        <ul>
+            <li>
+                <strong>Evidence processed:</strong>
+                {{ result.evidence|length }}
+            </li>
+
+            <li>
+                <strong>Entities:</strong>
+                {{ result.entities|length }}
+            </li>
+
+            <li>
+                <strong>Relationships:</strong>
+                {{ result.relationships|length }}
+            </li>
+
+            <li>
+                <strong>Findings:</strong>
+                {{ findings|length }}
+            </li>
+        </ul>
+    </section>
+
+    <hr>
+
+    <section>
+        <h2>Findings</h2>
+
+        {% if findings %}
+
+        {% for finding in findings %}
+        <article>
+            <h3>
+                {{ finding.title }}
+            </h3>
+
+            <p>
+                <strong>Severity:</strong>
+                {{ finding.severity.value }}
+            </p>
+
+            <p>
+                <strong>Rule:</strong>
+                <code>{{ finding.rule_id }}</code>
+                (v{{ finding.rule_version }})
+            </p>
+
+            <p>
+                <strong>Finding ID:</strong>
+                <code>{{ finding.finding_id }}</code>
+            </p>
+
+            <p>
+                <strong>Tenant:</strong>
+                {{ finding.tenant_id|default:"—" }}
+            </p>
+
+            <p>
+                <strong>Description:</strong>
+                {{ finding.description }}
+            </p>
+
+            {% if finding.first_timestamp %}
+            <p>
+                <strong>First timestamp:</strong>
+                {{ finding.first_timestamp }}
+            </p>
+            {% endif %}
+
+            {% if finding.last_timestamp %}
+            <p>
+                <strong>Last timestamp:</strong>
+                {{ finding.last_timestamp }}
+            </p>
+            {% endif %}
+
+            <p>
+                <strong>Time difference:</strong>
+                {{ finding.attributes.time_delta_seconds|default:"—" }}
+                seconds
+            </p>
+
+            <p>
+                <strong>Correlation window:</strong>
+                {{ finding.attributes.window_seconds|default:"—" }}
+                seconds
+            </p>
+
+            <h4>Evidence</h4>
+
+            {% if finding.evidence_ids %}
+            <ul>
+                {% for evidence_id in finding.evidence_ids %}
+                <li>
+                    <code>{{ evidence_id }}</code>
+                </li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <p>No evidence identifiers associated with this finding.</p>
+            {% endif %}
+
+            {% if finding.entity_ids %}
+            <h4>Entities</h4>
+
+            <ul>
+                {% for entity_id in finding.entity_ids %}
+                <li>
+                    <code>{{ entity_id }}</code>
+                </li>
+                {% endfor %}
+            </ul>
+            {% endif %}
+        </article>
+
+        {% if not forloop.last %}
+        <hr>
+        {% endif %}
+        {% endfor %}
+
+        {% else %}
+        <p>
+            No correlation findings were produced for the selected scope.
+        </p>
+        {% endif %}
+    </section>
+</body>
+
+</html>

@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Evidence Detail</title>
+</head>
+
+<body>
+    <p>
+        <a href="{% url 'dashboard:evidence' %}">
+            ← Back to Evidence
+        </a>
+    </p>
+
+    <h1>Evidence Detail</h1>
+
+    {% if evidence.event_id %}
+
+    <section>
+        <h2>Evidence Event</h2>
+
+        <dl>
+            <dt><strong>Evidence ID</strong></dt>
+            <dd>
+                <code>{{ evidence.event_id }}</code>
+            </dd>
+
+            <dt><strong>Tenant</strong></dt>
+            <dd>
+                {{ evidence.tenant_id|default:"—" }}
+            </dd>
+
+            <dt><strong>Instance</strong></dt>
+            <dd>
+                {{ evidence.instance_name|default:"—" }}
+            </dd>
+
+            <dt><strong>Evidence type</strong></dt>
+            <dd>
+                {{ evidence.evidence_type|default:"—" }}
+            </dd>
+
+            <dt><strong>Event type</strong></dt>
+            <dd>
+                {{ evidence.event_type|default:"—" }}
+            </dd>
+
+            <dt><strong>Timestamp</strong></dt>
+            <dd>
+                {{ evidence.timestamp|default:"—" }}
+            </dd>
+
+            <dt><strong>Actor</strong></dt>
+            <dd>
+                {{ evidence.actor|default:"—" }}
+            </dd>
+
+            <dt><strong>UID</strong></dt>
+            <dd>
+                {{ evidence.uid|default:"—" }}
+            </dd>
+
+            <dt><strong>Resource</strong></dt>
+            <dd>
+                {{ evidence.resource|default:"—" }}
+            </dd>
+
+            <dt><strong>Source</strong></dt>
+            <dd>
+                {{ evidence.source|default:"—" }}
+            </dd>
+
+            <dt><strong>Source path</strong></dt>
+            <dd>
+                {{ evidence.source_path|default:"—" }}
+            </dd>
+
+            <dt><strong>Sequence</strong></dt>
+            <dd>
+                {{ evidence.sequence|default:"—" }}
+            </dd>
+
+            <dt><strong>Agent ID</strong></dt>
+            <dd>
+                {{ evidence.agent_id|default:"—" }}
+            </dd>
+
+            <dt><strong>SHA-256</strong></dt>
+            <dd>
+                <code>{{ evidence.sha256|default:"—" }}</code>
+            </dd>
+
+            <dt><strong>Created at</strong></dt>
+            <dd>
+                {{ evidence.created_at|default:"—" }}
+            </dd>
+        </dl>
+    </section>
+
+    <hr>
+
+    <section>
+        <h2>Details</h2>
+
+        {% if evidence.details %}
+        <pre>{{ evidence.details }}</pre>
+        {% elif evidence.details_json %}
+        <pre>{{ evidence.details_json }}</pre>
+        {% else %}
+        <p>No additional details available.</p>
+        {% endif %}
+    </section>
+
+    {% elif evidence.evidence_id %}
+
+    <section>
+        <h2>Forensic Evidence Record</h2>
+
+        <dl>
+            <dt><strong>Evidence ID</strong></dt>
+            <dd>
+                <code>{{ evidence.evidence_id }}</code>
+            </dd>
+
+            <dt><strong>Tenant</strong></dt>
+            <dd>
+                {{ evidence.tenant_id|default:"—" }}
+            </dd>
+
+            <dt><strong>Tenant hash</strong></dt>
+            <dd>
+                <code>{{ evidence.tenant_hash|default:"—" }}</code>
+            </dd>
+
+            <dt><strong>Project ID</strong></dt>
+            <dd>
+                {{ evidence.project_id|default:"—" }}
+            </dd>
+
+            <dt><strong>Instance</strong></dt>
+            <dd>
+                {{ evidence.instance_name|default:"—" }}
+            </dd>
+
+            <dt><strong>Scope</strong></dt>
+            <dd>
+                {{ evidence.scope|default:"—" }}
+            </dd>
+
+            <dt><strong>Source</strong></dt>
+            <dd>
+                {{ evidence.source|default:"—" }}
+            </dd>
+
+            <dt><strong>Source path</strong></dt>
+            <dd>
+                {{ evidence.source_path|default:"—" }}
+            </dd>
+
+            <dt><strong>Acquisition layer</strong></dt>
+            <dd>
+                {{ evidence.acquisition_layer|default:"—" }}
+            </dd>
+
+            <dt><strong>Acquired from</strong></dt>
+            <dd>
+                {{ evidence.acquired_from|default:"—" }}
+            </dd>
+
+            <dt><strong>Attribution method</strong></dt>
+            <dd>
+                {{ evidence.attribution_method|default:"—" }}
+            </dd>
+
+            <dt><strong>Collected at</strong></dt>
+            <dd>
+                {{ evidence.collected_at|default:"—" }}
+            </dd>
+
+            <dt><strong>Size</strong></dt>
+            <dd>
+                {{ evidence.size_bytes|default:"—" }} bytes
+            </dd>
+
+            <dt><strong>Sequence start</strong></dt>
+            <dd>
+                {{ evidence.sequence_start|default:"—" }}
+            </dd>
+
+            <dt><strong>Sequence end</strong></dt>
+            <dd>
+                {{ evidence.sequence_end|default:"—" }}
+            </dd>
+
+            <dt><strong>Capture ID</strong></dt>
+            <dd>
+                <code>{{ evidence.capture_id|default:"—" }}</code>
+            </dd>
+
+            <dt><strong>SHA-256</strong></dt>
+            <dd>
+                <code>{{ evidence.sha256|default:"—" }}</code>
+            </dd>
+
+            <dt><strong>Record SHA-256</strong></dt>
+            <dd>
+                <code>{{ evidence.record_sha256|default:"—" }}</code>
+            </dd>
+        </dl>
+    </section>
+
+    {% else %}
+
+    <p>
+        The evidence item could not be identified.
+    </p>
+
+    {% endif %}
+</body>
+
+</html>

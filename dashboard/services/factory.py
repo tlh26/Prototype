@@ -11,8 +11,22 @@ from correlation.entities import EntityExtractor
 from correlation.normaliser import EvidenceNormaliser
 from correlation.relationships import RelationshipMapper
 from correlation.rules import SameTenantTemporalRule
-
+from dashboard.services.evidence import EvidenceService
 from .correlation import CorrelationService
+
+
+def _setting(name: str, default):
+    """
+    Read a Django setting when Django is configured.
+
+    The fallback keeps the correlation composition usable from standalone
+    tests and scripts that do not initialise Django.
+    """
+
+    try:
+        return getattr(settings, name)
+    except Exception:
+        return default
 
 
 @lru_cache(maxsize=1)
@@ -27,10 +41,15 @@ def build_correlation_source() -> PostgreSQLCorrelationSource:
 @lru_cache(maxsize=1)
 def build_correlation_engine() -> CorrelationEngine:
     """
-    Construct the single authoritative correlation engine.
+    Construct the authoritative correlation engine.
 
-    All correlation behaviour remains in the correlation package.
+    All correlation behaviour remains inside the correlation package.
     """
+
+    window_seconds = _setting(
+        "DASHBOARD_RULE_WINDOW_SECONDS",
+        10,
+    )
 
     return CorrelationEngine(
         normaliser=EvidenceNormaliser(),
@@ -39,7 +58,7 @@ def build_correlation_engine() -> CorrelationEngine:
         relationship_mapper=RelationshipMapper(),
         rules=[
             SameTenantTemporalRule(
-                window_seconds=settings.DASHBOARD_RULE_WINDOW_SECONDS,
+                window_seconds=window_seconds,
             )
         ],
     )
@@ -51,8 +70,20 @@ def build_correlation_service() -> CorrelationService:
     Construct the dashboard-facing correlation service.
     """
 
+    evidence_limit = _setting(
+        "DASHBOARD_EVIDENCE_LIMIT",
+        100,
+    )
+
     return CorrelationService(
         source=build_correlation_source(),
         engine=build_correlation_engine(),
-        evidence_limit=settings.DASHBOARD_EVIDENCE_LIMIT,
+        evidence_limit=evidence_limit,
+    )
+
+@lru_cache(maxsize=1)
+def build_evidence_service() -> EvidenceService:
+    return EvidenceService(
+        source=build_correlation_source(),
+        evidence_limit=_setting("DASHBOARD_EVIDENCE_LIMIT", 100),
     )

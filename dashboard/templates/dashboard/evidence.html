@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Evidence</title>
+</head>
+
+<body>
+    <h1>Evidence</h1>
+
+    <form method="get">
+        <label for="tenant_id">
+            Tenant:
+        </label>
+
+        <input type="text" id="tenant_id" name="tenant_id" value="{{ tenant_id|default:'' }}" placeholder="tenant-a">
+
+        <label for="instance_name">
+            Instance:
+        </label>
+
+        <input type="text" id="instance_name" name="instance_name" value="{{ instance_name|default:'' }}"
+            placeholder="web-a">
+
+        <button type="submit">Filter</button>
+
+        <a href="{% url 'dashboard:evidence' %}">
+            Clear
+        </a>
+    </form>
+
+    <hr>
+
+    <section>
+        <h2>Evidence Summary</h2>
+
+        <p>
+            <strong>Evidence returned:</strong>
+            {{ evidence_items|length }}
+        </p>
+
+        {% if tenant_id %}
+        <p>
+            <strong>Tenant:</strong>
+            {{ tenant_id }}
+        </p>
+        {% endif %}
+
+        {% if instance_name %}
+        <p>
+            <strong>Instance:</strong>
+            {{ instance_name }}
+        </p>
+        {% endif %}
+    </section>
+
+    <hr>
+
+    <section>
+        <h2>Evidence Items</h2>
+
+        {% if evidence_items %}
+
+        {% for item in evidence_items %}
+        <article>
+            <h3>
+                {% if item.event_id %}
+                <a href="{% url 'dashboard:evidence_detail' item.event_id %}">
+                    {{ item.event_id }}
+                </a>
+                {% elif item.evidence_id %}
+                <a href="{% url 'dashboard:evidence_detail' item.evidence_id %}">
+                    {{ item.evidence_id }}
+                </a>
+                {% endif %}
+            </h3>
+
+            {% if item.event_id %}
+            <p>
+                <strong>Type:</strong>
+                Event
+            </p>
+
+            <p>
+                <strong>Evidence type:</strong>
+                {{ item.evidence_type|default:"—" }}
+            </p>
+
+            <p>
+                <strong>Event type:</strong>
+                {{ item.event_type|default:"—" }}
+            </p>
+
+            <p>
+                <strong>Timestamp:</strong>
+                {{ item.timestamp|default:"—" }}
+            </p>
+
+            {% else %}
+            <p>
+                <strong>Type:</strong>
+                Forensic record
+            </p>
+
+            <p>
+                <strong>Evidence type:</strong>
+                {{ item.evidence_type|default:"—" }}
+            </p>
+
+            <p>
+                <strong>Collected:</strong>
+                {{ item.collected_at|default:"—" }}
+            </p>
+            {% endif %}
+
+            <p>
+                <strong>Tenant:</strong>
+                {{ item.tenant_id|default:"—" }}
+            </p>
+
+            <p>
+                <strong>Instance:</strong>
+                {{ item.instance_name|default:"—" }}
+            </p>
+
+            <p>
+                <strong>Source:</strong>
+                {{ item.source|default:"—" }}
+            </p>
+
+            {% if item.sha256 %}
+            <p>
+                <strong>SHA-256:</strong>
+                <code>{{ item.sha256 }}</code>
+            </p>
+            {% elif item.record_sha256 %}
+            <p>
+                <strong>Record SHA-256:</strong>
+                <code>{{ item.record_sha256 }}</code>
+            </p>
+            {% endif %}
+
+            <p>
+                {% if item.event_id %}
+                <a href="{% url 'dashboard:evidence_detail' item.event_id %}">
+                    View evidence details
+                </a>
+                {% elif item.evidence_id %}
+                <a href="{% url 'dashboard:evidence_detail' item.evidence_id %}">
+                    View evidence details
+                </a>
+                {% endif %}
+            </p>
+        </article>
+
+        {% if not forloop.last %}
+        <hr>
+        {% endif %}
+        {% endfor %}
+
+        {% else %}
+        <p>
+            No evidence was found for the selected scope.
+        </p>
+        {% endif %}
+    </section>
+</body>
+
+</html>
