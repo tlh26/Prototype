@@ -29,65 +29,46 @@ class AgentConfig:
             value = os.getenv(name)
 
             if not value:
-                raise RuntimeError(
-                    f"Missing environment variable: {name}"
-                )
+                raise RuntimeError(f"Missing environment variable: {name}")
 
             return value
 
         return cls(
-            tenant_id=required(
-                "EVIDENCE_TENANT_ID"
-            ),
-            instance_name=required(
-                "EVIDENCE_INSTANCE_NAME"
-            ),
-            agent_id=required(
-                "EVIDENCE_AGENT_ID"
-            ),
-
-            central_url=required(
-                "EVIDENCE_CENTRAL_URL"
-            ),
-            api_key=required(
-                "EVIDENCE_API_KEY"
-            ),
-
+            tenant_id=required("EVIDENCE_TENANT_ID"),
+            instance_name=required("EVIDENCE_INSTANCE_NAME"),
+            agent_id=required("EVIDENCE_AGENT_ID"),
+            central_url=required("EVIDENCE_CENTRAL_URL"),
+            api_key=required("EVIDENCE_API_KEY"),
             auth_log=Path(
                 os.getenv(
                     "EVIDENCE_AUTH_LOG",
                     "/var/log/auth.log",
                 )
             ),
-
             access_log=Path(
                 os.getenv(
                     "EVIDENCE_ACCESS_LOG",
                     "/var/log/nginx/access.log",
                 )
             ),
-
             watched_directory=Path(
                 os.getenv(
                     "EVIDENCE_WATCHED_DIRECTORY",
                     "/tmp/evidence",
                 )
             ),
-
             state_directory=Path(
                 os.getenv(
                     "EVIDENCE_STATE_DIRECTORY",
                     "/var/lib/evidence-agent",
                 )
             ),
-
             spool_directory=Path(
                 os.getenv(
                     "EVIDENCE_SPOOL_DIRECTORY",
                     "/var/lib/evidence-agent/spool",
                 )
             ),
-
             interval=int(
                 os.getenv(
                     "EVIDENCE_INTERVAL",

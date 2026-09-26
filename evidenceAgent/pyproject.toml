@@ -32,6 +32,9 @@ include = [
 
 
 [tool.pytest.ini_options]
+pythonpath = [
+    ".",
+]
 testpaths = [
     "tests",
 ]

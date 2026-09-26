@@ -44,29 +44,17 @@ class GenericEvidenceRepository:
         evidence: EvidenceRecord,
     ) -> None:
 
-        actual_sha256 = hashlib.sha256(
-            evidence.raw_data
-        ).hexdigest()
+        actual_sha256 = hashlib.sha256(evidence.raw_data).hexdigest()
 
         if actual_sha256 != evidence.sha256:
-            raise ValueError(
-                f"SHA-256 mismatch for "
-                f"{evidence.evidence_id}"
-            )
+            raise ValueError(f"SHA-256 mismatch for " f"{evidence.evidence_id}")
 
-        actual_size = len(
-            evidence.raw_data
-        )
+        actual_size = len(evidence.raw_data)
 
         if actual_size != evidence.size_bytes:
-            raise ValueError(
-                f"Evidence size mismatch for "
-                f"{evidence.evidence_id}"
-            )
+            raise ValueError(f"Evidence size mismatch for " f"{evidence.evidence_id}")
 
-        existing = self.get(
-            evidence.evidence_id
-        )
+        existing = self.get(evidence.evidence_id)
 
         if existing is not None:
 
@@ -92,20 +80,12 @@ class GenericEvidenceRepository:
                     "source_path": evidence.source_path,
                     "acquisition_layer": evidence.acquisition_layer,
                     "acquired_from": evidence.acquired_from,
-                    "attribution_method": (
-                        evidence.attribution_method
-                    ),
-                    "collected_at": (
-                        evidence.collected_at.isoformat()
-                    ),
+                    "attribution_method": (evidence.attribution_method),
+                    "collected_at": (evidence.collected_at.isoformat()),
                     "sha256": evidence.sha256,
                     "size_bytes": evidence.size_bytes,
-                    "sequence_start": (
-                        evidence.sequence_start
-                    ),
-                    "sequence_end": (
-                        evidence.sequence_end
-                    ),
+                    "sequence_start": (evidence.sequence_start),
+                    "sequence_end": (evidence.sequence_end),
                     "capture_id": evidence.capture_id,
                 },
                 sort_keys=True,
@@ -139,7 +119,7 @@ class GenericEvidenceRepository:
                 %s, %s, %s, %s, %s,
                 %s, %s, %s, %s, %s,
                 %s, %s, %s, %s, %s,
-                %s, %s, %s, %s, %s
+                %s, %s, %s, %s
             )
             """,
             (

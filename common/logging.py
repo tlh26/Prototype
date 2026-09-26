@@ -34,7 +34,8 @@ def configure_logging() -> logging.Logger:
 
     return logger
 
-#========================================
+
+# ========================================
 """ USAGE
 # from common.logging import configure_logging
 

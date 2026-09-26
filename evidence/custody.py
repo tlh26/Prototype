@@ -1,6 +1,6 @@
 """
-CustodyEntry: Represents one evidence handling event 
-ChainOfCustody: Contains a list of custody entries 
+CustodyEntry: Represents one evidence handling event
+ChainOfCustody: Contains a list of custody entries
 
     Class: CustodyEntry
     Attributes: custody_id

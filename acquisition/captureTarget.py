@@ -17,9 +17,7 @@ class CaptureTarget:
 
     def __post_init__(self) -> None:
         if not self.instance_name.strip():
-            raise ValueError(
-                "instance_name must not be empty"
-            )
+            raise ValueError("instance_name must not be empty")
 
     @property
     def tenant_id(self) -> str:

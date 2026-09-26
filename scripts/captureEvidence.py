@@ -39,19 +39,13 @@ def build_service(
 
     executor = IncusExecutor()
 
-    audit_collector = AuditCollector(
-        executor=executor
-    )
+    audit_collector = AuditCollector(executor=executor)
 
     registry = CollectorRegistry()
 
-    registry.register(
-        audit_collector
-    )
+    registry.register(audit_collector)
 
-    repository = SQLiteEvidenceRepository(
-        database_path
-    )
+    repository = SQLiteEvidenceRepository(database_path)
 
     return EvidenceCaptureService(
         registry=registry,
@@ -85,35 +79,25 @@ def main() -> None:
 
     args = parser.parse_args()
 
-    tenant = build_tenant(
-        args.project
-    )
+    tenant = build_tenant(args.project)
 
     target = CaptureTarget(
         tenant=tenant,
         instance_name=args.instance,
     )
 
-    service = build_service(
-        args.database
-    )
+    service = build_service(args.database)
 
     print()
     print("=" * 60)
     print("Evidence Capture")
     print("=" * 60)
 
-    print(
-        f"Tenant:   {target.tenant_id}"
-    )
+    print(f"Tenant:   {target.tenant_id}")
 
-    print(
-        f"Project:  {target.project_id}"
-    )
+    print(f"Project:  {target.project_id}")
 
-    print(
-        f"Instance: {target.instance_name}"
-    )
+    print(f"Instance: {target.instance_name}")
 
     print()
 
@@ -136,24 +120,15 @@ def main() -> None:
 
         else:
 
-            print(
-                f"[FAILED] {result.source:<12} "
-                f"{result.error}"
-            )
+            print(f"[FAILED] {result.source:<12} " f"{result.error}")
 
     print()
 
-    print(
-        f"Capture ID: {manifest.capture_id}"
-    )
+    print(f"Capture ID: {manifest.capture_id}")
 
-    print(
-        f"Status:     {manifest.status.value}"
-    )
+    print(f"Status:     {manifest.status.value}")
 
-    print(
-        f"Evidence:   {manifest.evidence_count}"
-    )
+    print(f"Evidence:   {manifest.evidence_count}")
 
     print("=" * 60)
 

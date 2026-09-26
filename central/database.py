@@ -36,8 +36,7 @@ def initialise_database(
     with get_connection(config) as connection:
         with connection.cursor() as cursor:
 
-            cursor.execute(
-                """
+            cursor.execute("""
                 CREATE TABLE IF NOT EXISTS evidence_events (
                     event_id TEXT PRIMARY KEY,
                     tenant_id TEXT NOT NULL,
@@ -57,54 +56,42 @@ def initialise_database(
                     sha256 TEXT NOT NULL,
                     created_at TEXT NOT NULL
                 )
-                """
-            )
+                """)
 
-            cursor.execute(
-                """
+            cursor.execute("""
                 CREATE INDEX IF NOT EXISTS
                     idx_evidence_tenant
                 ON evidence_events(tenant_id)
-                """
-            )
+                """)
 
-            cursor.execute(
-                """
+            cursor.execute("""
                 CREATE INDEX IF NOT EXISTS
                     idx_evidence_instance
                 ON evidence_events(
                     tenant_id,
                     instance_name
                 )
-                """
-            )
+                """)
 
-            cursor.execute(
-                """
+            cursor.execute("""
                 CREATE INDEX IF NOT EXISTS
                     idx_evidence_timestamp
                 ON evidence_events(timestamp)
-                """
-            )
+                """)
 
-            cursor.execute(
-                """
+            cursor.execute("""
                 CREATE INDEX IF NOT EXISTS
                     idx_evidence_type
                 ON evidence_events(evidence_type)
-                """
-            )
+                """)
 
-            cursor.execute(
-                """
+            cursor.execute("""
                 CREATE INDEX IF NOT EXISTS
                     idx_evidence_hash
                 ON evidence_events(sha256)
-                """
-            )
+                """)
 
-            cursor.execute(
-                """
+            cursor.execute("""
                 CREATE TABLE IF NOT EXISTS evidence_records (
                     evidence_id TEXT PRIMARY KEY,
                     tenant_id TEXT,
@@ -126,39 +113,30 @@ def initialise_database(
                     capture_id TEXT,
                     record_sha256 TEXT
                 )
-                """
-            )
+                """)
 
-            cursor.execute(
-                """
+            cursor.execute("""
                 CREATE INDEX IF NOT EXISTS
                     idx_evidence_records_tenant
                 ON evidence_records(tenant_id)
-                """
-            )
+                """)
 
-            cursor.execute(
-                """
+            cursor.execute("""
                 CREATE INDEX IF NOT EXISTS
                     idx_evidence_records_instance
                 ON evidence_records(instance_name)
-                """
-            )
+                """)
 
-            cursor.execute(
-                """
+            cursor.execute("""
                 CREATE INDEX IF NOT EXISTS
                     idx_evidence_records_source
                 ON evidence_records(source)
-                """
-            )
+                """)
 
-            cursor.execute(
-                """
+            cursor.execute("""
                 CREATE INDEX IF NOT EXISTS
                     idx_evidence_records_collected_at
                 ON evidence_records(collected_at)
-                """
-            )
+                """)
 
         connection.commit()

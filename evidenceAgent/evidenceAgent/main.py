@@ -6,9 +6,7 @@ def main():
 
     config = AgentConfig.from_environment()
 
-    agent = EvidenceAgent(
-        config
-    )
+    agent = EvidenceAgent(config)
 
     agent.run()
 

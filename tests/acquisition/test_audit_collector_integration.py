@@ -4,7 +4,6 @@ from acquisition.checkpoint import CheckpointStore
 from acquisition.collectors.audit import AuditCollector
 from acquisition.collectors.auditAttributor import IncusAuditAttributor
 
-
 AUDIT_LOG = "/var/log/audit/audit.log"
 
 
@@ -28,9 +27,7 @@ class MockHostExecutor:
         if command[0] == "stat":
             return SimpleNamespace(
                 returncode=0,
-                stdout=(
-                    f"10 20 {len(self.audit_data)}\n"
-                ).encode(),
+                stdout=(f"10 20 {len(self.audit_data)}\n").encode(),
                 stderr=b"",
             )
 
@@ -40,26 +37,18 @@ class MockHostExecutor:
 
             for argument in command:
                 if argument.startswith("skip="):
-                    skip = int(
-                        argument.split("=", 1)[1]
-                    )
+                    skip = int(argument.split("=", 1)[1])
 
                 elif argument.startswith("count="):
-                    count = int(
-                        argument.split("=", 1)[1]
-                    )
+                    count = int(argument.split("=", 1)[1])
 
             return SimpleNamespace(
                 returncode=0,
-                stdout=self.audit_data[
-                    skip:skip + count
-                ],
+                stdout=self.audit_data[skip : skip + count],
                 stderr=b"",
             )
 
-        raise AssertionError(
-            f"Unexpected host command: {command}"
-        )
+        raise AssertionError(f"Unexpected host command: {command}")
 
 
 def audit_record(
@@ -68,12 +57,7 @@ def audit_record(
 ) -> bytes:
     return (
         b"type=SYSCALL "
-        + (
-            f"msg=audit("
-            f"08/27/2026 19:35:34.612:"
-            f"{sequence}"
-            f"): "
-        ).encode()
+        + (f"msg=audit(" f"08/27/2026 19:35:34.612:" f"{sequence}" f"): ").encode()
         + f"subj={subject}\n".encode()
     )
 
@@ -82,13 +66,9 @@ def create_collector(
     tmp_path,
     audit_data: bytes,
 ):
-    executor = MockHostExecutor(
-        audit_data
-    )
+    executor = MockHostExecutor(audit_data)
 
-    checkpoint_store = CheckpointStore(
-        tmp_path / "audit-checkpoint.json"
-    )
+    checkpoint_store = CheckpointStore(tmp_path / "audit-checkpoint.json")
 
     collector = AuditCollector(
         executor=executor,
@@ -148,9 +128,7 @@ def test_audit_collector_collect_new_full_flow(
         audit_data,
     )
 
-    result = collector.collect_new(
-        audit_path=AUDIT_LOG
-    )
+    result = collector.collect_new(audit_path=AUDIT_LOG)
 
     evidence = result.evidence
     checkpoint = result.checkpoint
@@ -163,10 +141,7 @@ def test_audit_collector_collect_new_full_flow(
 
     # The highest sequence is held back because the event
     # may still receive additional audit records.
-    sequences = {
-        item.sequence_start
-        for item in evidence
-    }
+    sequences = {item.sequence_start for item in evidence}
 
     assert sequences == {100, 101}
 
@@ -174,11 +149,7 @@ def test_audit_collector_collect_new_full_flow(
     # Tenant / instance attribution
     # ---------------------------------------------------------
 
-    web_evidence = [
-        item
-        for item in evidence
-        if item.instance_name == "web-b"
-    ]
+    web_evidence = [item for item in evidence if item.instance_name == "web-b"]
 
     assert len(web_evidence) == 2
 
@@ -200,9 +171,7 @@ def test_audit_collector_collect_new_full_flow(
 
         assert item.raw_data
 
-        assert item.size_bytes == len(
-            item.raw_data
-        )
+        assert item.size_bytes == len(item.raw_data)
 
     # ---------------------------------------------------------
     # SHA-256 integrity
@@ -234,10 +203,7 @@ def test_audit_collector_collect_new_full_flow(
     # Sequence 102 is retained as pending.
     assert checkpoint.pending_data
 
-    assert (
-        b":102):"
-        in checkpoint.pending_data
-    )
+    assert b":102):" in checkpoint.pending_data
 
     # ---------------------------------------------------------
     # Host executor was actually used
@@ -257,15 +223,12 @@ def test_audit_collector_commit_checkpoint(
     can subsequently be committed and loaded.
     """
 
-    audit_data = (
-        audit_record(
-            100,
-            "incus-tenant-b_web-b_test",
-        )
-        + audit_record(
-            101,
-            "incus-tenant-b_web-b_test",
-        )
+    audit_data = audit_record(
+        100,
+        "incus-tenant-b_web-b_test",
+    ) + audit_record(
+        101,
+        "incus-tenant-b_web-b_test",
     )
 
     collector, _ = create_collector(
@@ -273,13 +236,9 @@ def test_audit_collector_commit_checkpoint(
         audit_data,
     )
 
-    result = collector.collect_new(
-        audit_path=AUDIT_LOG
-    )
+    result = collector.collect_new(audit_path=AUDIT_LOG)
 
-    collector.commit_checkpoint(
-        result.checkpoint
-    )
+    collector.commit_checkpoint(result.checkpoint)
 
     stored = collector.checkpoint_store.load()
 

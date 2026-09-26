@@ -16,7 +16,6 @@ def test_evidence_record_contains_tenant_context():
     tenant = create_tenant("cloud-a")
 
     evidence = EvidenceRecord(
-        # Add the other required EvidenceRecord fields here
         tenant=tenant,
     )
 

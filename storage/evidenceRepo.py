@@ -84,17 +84,11 @@ class SQLiteEvidenceRepository:
 
         connection.row_factory = sqlite3.Row
 
-        connection.execute(
-            "PRAGMA foreign_keys = ON"
-        )
+        connection.execute("PRAGMA foreign_keys = ON")
 
-        connection.execute(
-            "PRAGMA journal_mode = WAL"
-        )
+        connection.execute("PRAGMA journal_mode = WAL")
 
-        connection.execute(
-            "PRAGMA synchronous = FULL"
-        )
+        connection.execute("PRAGMA synchronous = FULL")
 
         return connection
 
@@ -139,8 +133,7 @@ class SQLiteEvidenceRepository:
 
         with self._connect() as connection:
 
-            connection.execute(
-                """
+            connection.execute("""
                 CREATE TABLE IF NOT EXISTS capture_manifests (
                     capture_id TEXT PRIMARY KEY,
 
@@ -161,11 +154,9 @@ class SQLiteEvidenceRepository:
                     created_at TEXT NOT NULL,
                     updated_at TEXT NOT NULL
                 )
-                """
-            )
+                """)
 
-            connection.execute(
-                """
+            connection.execute("""
                 CREATE TABLE IF NOT EXISTS evidence (
                     evidence_id TEXT PRIMARY KEY,
 
@@ -201,48 +192,37 @@ class SQLiteEvidenceRepository:
                     FOREIGN KEY (capture_id)
                         REFERENCES capture_manifests(capture_id)
                 )
-                """
-            )
+                """)
 
-            connection.execute(
-                """
+            connection.execute("""
                 CREATE INDEX IF NOT EXISTS
                 idx_evidence_tenant
                 ON evidence(tenant_id)
-                """
-            )
+                """)
 
-            connection.execute(
-                """
+            connection.execute("""
                 CREATE INDEX IF NOT EXISTS
                 idx_evidence_instance
                 ON evidence(instance_name)
-                """
-            )
+                """)
 
-            connection.execute(
-                """
+            connection.execute("""
                 CREATE INDEX IF NOT EXISTS
                 idx_evidence_source
                 ON evidence(source)
-                """
-            )
+                """)
 
-            connection.execute(
-                """
+            connection.execute("""
                 CREATE INDEX IF NOT EXISTS
                 idx_evidence_capture
                 ON evidence(capture_id)
-                """
-            )
+                """)
 
-            connection.execute(
-                """
+            connection.execute("""
                 CREATE INDEX IF NOT EXISTS
                 idx_evidence_collected_at
                 ON evidence(collected_at)
-                """
-            )
+                """)
 
     # ------------------------------------------------------------------
     # DATETIME
@@ -260,13 +240,9 @@ class SQLiteEvidenceRepository:
             return None
 
         if value.tzinfo is None:
-            value = value.replace(
-                tzinfo=timezone.utc
-            )
+            value = value.replace(tzinfo=timezone.utc)
 
-        return value.astimezone(
-            timezone.utc
-        ).isoformat()
+        return value.astimezone(timezone.utc).isoformat()
 
     # ------------------------------------------------------------------
     # RAW HASH
@@ -280,9 +256,7 @@ class SQLiteEvidenceRepository:
         Calculate SHA-256 over the raw evidence bytes.
         """
 
-        return hashlib.sha256(
-            raw_data
-        ).hexdigest()
+        return hashlib.sha256(raw_data).hexdigest()
 
     # ------------------------------------------------------------------
     # RECORD HASH
@@ -304,45 +278,21 @@ class SQLiteEvidenceRepository:
         payload = {
             "evidence_id": evidence.evidence_id,
             "capture_id": capture_id,
-
             "tenant_id": evidence.tenant_id,
             "tenant_hash": evidence.tenant_hash,
-
             "project_id": evidence.project_id,
             "instance_name": evidence.instance_name,
-
             "scope": evidence.scope,
-
             "source": evidence.source,
             "source_path": evidence.source_path,
-
-            "acquisition_layer":
-                evidence.acquisition_layer,
-
-            "acquired_from":
-                evidence.acquired_from,
-
-            "attribution_method":
-                evidence.attribution_method,
-
-            "collected_at":
-                self._datetime_to_string(
-                    evidence.collected_at
-                ),
-
-            "sha256":
-                self._calculate_raw_sha256(
-                    evidence.raw_data
-                ),
-
-            "size_bytes":
-                evidence.size_bytes,
-
-            "sequence_start":
-                evidence.sequence_start,
-
-            "sequence_end":
-                evidence.sequence_end,
+            "acquisition_layer": evidence.acquisition_layer,
+            "acquired_from": evidence.acquired_from,
+            "attribution_method": evidence.attribution_method,
+            "collected_at": self._datetime_to_string(evidence.collected_at),
+            "sha256": self._calculate_raw_sha256(evidence.raw_data),
+            "size_bytes": evidence.size_bytes,
+            "sequence_start": evidence.sequence_start,
+            "sequence_end": evidence.sequence_end,
         }
 
         return self._hash_canonical_payload(payload)
@@ -362,9 +312,7 @@ class SQLiteEvidenceRepository:
             ensure_ascii=False,
         ).encode("utf-8")
 
-        return hashlib.sha256(
-            canonical
-        ).hexdigest()
+        return hashlib.sha256(canonical).hexdigest()
 
     # ------------------------------------------------------------------
     # CAPTURE EXISTENCE
@@ -413,27 +361,17 @@ class SQLiteEvidenceRepository:
         connection: sqlite3.Connection | None = None,
     ) -> None:
 
-        actual_sha256 = hashlib.sha256(
-            evidence.raw_data
-        ).hexdigest()
+        actual_sha256 = hashlib.sha256(evidence.raw_data).hexdigest()
 
         if actual_sha256 != evidence.sha256:
-            raise ValueError(
-            f"SHA-256 mismatch for "
-            f"{evidence.evidence_id}"
-        )
+            raise ValueError(f"SHA-256 mismatch for " f"{evidence.evidence_id}")
 
         actual_size = len(evidence.raw_data)
 
         if actual_size != evidence.size_bytes:
-            raise ValueError(
-                f"Evidence size mismatch for "
-                f"{evidence.evidence_id}"
-        )
+            raise ValueError(f"Evidence size mismatch for " f"{evidence.evidence_id}")
 
-        existing = self.get_evidence_record(
-            evidence.evidence_id
-        )
+        existing = self.get_evidence_record(evidence.evidence_id)
 
         if existing is not None:
             if existing.sha256 != evidence.sha256:
@@ -441,35 +379,22 @@ class SQLiteEvidenceRepository:
                     f"Evidence ID collision with "
                     f"different SHA-256: "
                     f"{evidence.evidence_id}"
-            )
+                )
 
-        now = self._datetime_to_string(
-            datetime.now(timezone.utc)
-        )
+        now = self._datetime_to_string(datetime.now(timezone.utc))
 
         values = (
             manifest.capture_id,
-
             (
                 manifest.status.value
                 if hasattr(manifest.status, "value")
                 else str(manifest.status)
             ),
-
-            self._datetime_to_string(
-                manifest.started_at
-            ),
-
-            self._datetime_to_string(
-                manifest.completed_at
-            ),
-
+            self._datetime_to_string(manifest.started_at),
+            self._datetime_to_string(manifest.completed_at),
             len(manifest.sources),
-
             len(manifest.successful_sources),
-
             len(manifest.failed_sources),
-
             now,
             now,
         )
@@ -513,9 +438,7 @@ class SQLiteEvidenceRepository:
         connection: sqlite3.Connection | None = None,
     ) -> None:
 
-        now = self._datetime_to_string(
-            datetime.now(timezone.utc)
-        )
+        now = self._datetime_to_string(datetime.now(timezone.utc))
 
         values = (
             (
@@ -523,19 +446,11 @@ class SQLiteEvidenceRepository:
                 if hasattr(manifest.status, "value")
                 else str(manifest.status)
             ),
-
-            self._datetime_to_string(
-                manifest.completed_at
-            ),
-
+            self._datetime_to_string(manifest.completed_at),
             len(manifest.sources),
-
             len(manifest.successful_sources),
-
             len(manifest.failed_sources),
-
             now,
-
             manifest.capture_id,
         )
 
@@ -559,8 +474,7 @@ class SQLiteEvidenceRepository:
 
             if result.rowcount != 1:
                 raise ValueError(
-                    "Capture manifest does not exist: "
-                    f"{manifest.capture_id}"
+                    "Capture manifest does not exist: " f"{manifest.capture_id}"
                 )
 
             return
@@ -573,8 +487,7 @@ class SQLiteEvidenceRepository:
 
             if result.rowcount != 1:
                 raise ValueError(
-                    "Capture manifest does not exist: "
-                    f"{manifest.capture_id}"
+                    "Capture manifest does not exist: " f"{manifest.capture_id}"
                 )
 
     # ------------------------------------------------------------------
@@ -621,9 +534,7 @@ class SQLiteEvidenceRepository:
                     connection=connection,
                 )
             else:
-                exists = self.capture_exists(
-                    capture_id
-                )
+                exists = self.capture_exists(capture_id)
 
             if not exists:
                 raise ValueError(
@@ -635,36 +546,23 @@ class SQLiteEvidenceRepository:
         # Verify raw evidence before persistence
         # --------------------------------------------------------------
 
-        actual_raw_sha256 = (
-            self._calculate_raw_sha256(
-                evidence.raw_data
-            )
-        )
+        actual_raw_sha256 = self._calculate_raw_sha256(evidence.raw_data)
 
         if evidence.sha256 != actual_raw_sha256:
-            raise ValueError(
-                "Evidence SHA-256 does not match raw_data"
-            )
+            raise ValueError("Evidence SHA-256 does not match raw_data")
 
-        actual_size = len(
-            evidence.raw_data
-        )
+        actual_size = len(evidence.raw_data)
 
         if evidence.size_bytes != actual_size:
-            raise ValueError(
-                "Evidence size_bytes does not match "
-                "raw_data length"
-            )
+            raise ValueError("Evidence size_bytes does not match " "raw_data length")
 
         # --------------------------------------------------------------
         # Calculate immutable record hash
         # --------------------------------------------------------------
 
-        record_sha256 = (
-            self._calculate_record_hash(
-                evidence=evidence,
-                capture_id=capture_id,
-            )
+        record_sha256 = self._calculate_record_hash(
+            evidence=evidence,
+            capture_id=capture_id,
         )
 
         # --------------------------------------------------------------
@@ -719,37 +617,22 @@ class SQLiteEvidenceRepository:
         values = (
             evidence.evidence_id,
             capture_id,
-
             evidence.tenant_id,
             evidence.tenant_hash,
-
             evidence.project_id,
             evidence.instance_name,
-
             evidence.scope,
-
             evidence.source,
             evidence.source_path,
-
             evidence.acquisition_layer,
             evidence.acquired_from,
             evidence.attribution_method,
-
-            self._datetime_to_string(
-                evidence.collected_at
-            ),
-
-            sqlite3.Binary(
-                evidence.raw_data
-            ),
-
+            self._datetime_to_string(evidence.collected_at),
+            sqlite3.Binary(evidence.raw_data),
             actual_raw_sha256,
-
             actual_size,
-
             evidence.sequence_start,
             evidence.sequence_end,
-
             record_sha256,
         )
 
@@ -853,10 +736,7 @@ class SQLiteEvidenceRepository:
         """
 
         if clauses:
-            sql += (
-                " WHERE "
-                + " AND ".join(clauses)
-            )
+            sql += " WHERE " + " AND ".join(clauses)
 
         sql += """
             ORDER BY collected_at ASC
@@ -872,40 +752,27 @@ class SQLiteEvidenceRepository:
             EvidenceRecord(
                 evidence_id=row["evidence_id"],
                 capture_id=row["capture_id"],
-
                 tenant_id=row["tenant_id"],
                 tenant_hash=row["tenant_hash"],
-
                 project_id=row["project_id"],
                 instance_name=row["instance_name"],
-
                 scope=row["scope"],
-
                 source=row["source"],
                 source_path=row["source_path"],
-
                 acquisition_layer=row["acquisition_layer"],
                 acquired_from=row["acquired_from"],
                 attribution_method=row["attribution_method"],
-
-                collected_at=datetime.fromisoformat(
-                row["collected_at"]
-                ),
-
-                raw_data=bytes(
-                    row["raw_data"]
-                ),
-
+                collected_at=datetime.fromisoformat(row["collected_at"]),
+                raw_data=bytes(row["raw_data"]),
                 sha256=row["sha256"],
                 size_bytes=row["size_bytes"],
-
                 sequence_start=row["sequence_start"],
                 sequence_end=row["sequence_end"],
-
                 record_sha256=row["record_sha256"],
             )
             for row in rows
         ]
+
     # ------------------------------------------------------------------
     # COUNT
     # ------------------------------------------------------------------
@@ -913,12 +780,10 @@ class SQLiteEvidenceRepository:
     def count_evidence(self) -> int:
 
         with self._connect() as connection:
-            row = connection.execute(
-                """
+            row = connection.execute("""
                 SELECT COUNT(*) AS count
                 FROM evidence
-                """
-            ).fetchone()
+                """).fetchone()
 
             return int(row["count"])
 
@@ -931,9 +796,7 @@ class SQLiteEvidenceRepository:
         evidence_id: str,
     ) -> bool:
 
-        details = self.get_integrity_details(
-            evidence_id
-        )
+        details = self.get_integrity_details(evidence_id)
 
         return bool(
             details["exists"]
@@ -951,9 +814,7 @@ class SQLiteEvidenceRepository:
         evidence_id: str,
     ) -> dict[str, Any]:
 
-        row = self.get_evidence(
-            evidence_id
-        )
+        row = self.get_evidence(evidence_id)
 
         if row is None:
             return {
@@ -963,131 +824,59 @@ class SQLiteEvidenceRepository:
                 "size_matches": False,
             }
 
-        raw_data = bytes(
-            row["raw_data"]
-        )
+        raw_data = bytes(row["raw_data"])
 
         # --------------------------------------------------------------
         # Verify raw payload
         # --------------------------------------------------------------
 
-        calculated_raw_sha256 = (
-            self._calculate_raw_sha256(
-                raw_data
-            )
-        )
+        calculated_raw_sha256 = self._calculate_raw_sha256(raw_data)
 
-        calculated_size = len(
-            raw_data
-        )
+        calculated_size = len(raw_data)
 
-        size_matches = (
-            calculated_size
-            == row["size_bytes"]
-        )
+        size_matches = calculated_size == row["size_bytes"]
 
-        raw_sha256_matches = (
-            row["sha256"]
-            == calculated_raw_sha256
-        )
+        raw_sha256_matches = row["sha256"] == calculated_raw_sha256
 
         # --------------------------------------------------------------
         # Reconstruct canonical metadata
         # --------------------------------------------------------------
 
         payload = {
-            "evidence_id":
-                row["evidence_id"],
-
-            "capture_id":
-                row["capture_id"],
-
-            "tenant_id":
-                row["tenant_id"],
-
-            "tenant_hash":
-                row["tenant_hash"],
-
-            "project_id":
-                row["project_id"],
-
-            "instance_name":
-                row["instance_name"],
-
-            "scope":
-                row["scope"],
-
-            "source":
-                row["source"],
-
-            "source_path":
-                row["source_path"],
-
-            "acquisition_layer":
-                row["acquisition_layer"],
-
-            "acquired_from":
-                row["acquired_from"],
-
-            "attribution_method":
-                row["attribution_method"],
-
-            "collected_at":
-                row["collected_at"],
-
-            "sha256":
-                calculated_raw_sha256,
-
-            "size_bytes":
-                row["size_bytes"],
-
-            "sequence_start":
-                row["sequence_start"],
-
-            "sequence_end":
-                row["sequence_end"],
+            "evidence_id": row["evidence_id"],
+            "capture_id": row["capture_id"],
+            "tenant_id": row["tenant_id"],
+            "tenant_hash": row["tenant_hash"],
+            "project_id": row["project_id"],
+            "instance_name": row["instance_name"],
+            "scope": row["scope"],
+            "source": row["source"],
+            "source_path": row["source_path"],
+            "acquisition_layer": row["acquisition_layer"],
+            "acquired_from": row["acquired_from"],
+            "attribution_method": row["attribution_method"],
+            "collected_at": row["collected_at"],
+            "sha256": calculated_raw_sha256,
+            "size_bytes": row["size_bytes"],
+            "sequence_start": row["sequence_start"],
+            "sequence_end": row["sequence_end"],
         }
 
-        calculated_record_sha256 = (
-            self._hash_canonical_payload(
-                payload
-            )
-        )
+        calculated_record_sha256 = self._hash_canonical_payload(payload)
 
-        record_sha256_matches = (
-            row["record_sha256"]
-            == calculated_record_sha256
-        )
+        record_sha256_matches = row["record_sha256"] == calculated_record_sha256
 
         return {
             "exists": True,
-
-            "stored_raw_sha256":
-                row["sha256"],
-
-            "calculated_raw_sha256":
-                calculated_raw_sha256,
-
-            "raw_sha256_matches":
-                raw_sha256_matches,
-
-            "stored_record_sha256":
-                row["record_sha256"],
-
-            "calculated_record_sha256":
-                calculated_record_sha256,
-
-            "record_sha256_matches":
-                record_sha256_matches,
-
-            "stored_size":
-                row["size_bytes"],
-
-            "calculated_size":
-                calculated_size,
-
-            "size_matches":
-                size_matches,
+            "stored_raw_sha256": row["sha256"],
+            "calculated_raw_sha256": calculated_raw_sha256,
+            "raw_sha256_matches": raw_sha256_matches,
+            "stored_record_sha256": row["record_sha256"],
+            "calculated_record_sha256": calculated_record_sha256,
+            "record_sha256_matches": record_sha256_matches,
+            "stored_size": row["size_bytes"],
+            "calculated_size": calculated_size,
+            "size_matches": size_matches,
         }
 
     # ------------------------------------------------------------------
@@ -1105,9 +894,7 @@ class SQLiteEvidenceRepository:
         canonical domain representation.
         """
 
-        row = self.get_evidence(
-            evidence_id
-        )
+        row = self.get_evidence(evidence_id)
 
         if row is None:
             return None
@@ -1115,35 +902,21 @@ class SQLiteEvidenceRepository:
         return EvidenceRecord(
             evidence_id=row["evidence_id"],
             capture_id=row["capture_id"],
-
             tenant_id=row["tenant_id"],
             tenant_hash=row["tenant_hash"],
-
             project_id=row["project_id"],
             instance_name=row["instance_name"],
-
             scope=row["scope"],
-
             source=row["source"],
             source_path=row["source_path"],
-
             acquisition_layer=row["acquisition_layer"],
             acquired_from=row["acquired_from"],
             attribution_method=row["attribution_method"],
-
-            collected_at=datetime.fromisoformat(
-                row["collected_at"]
-            ),
-
-            raw_data=bytes(
-                row["raw_data"]
-            ),
-
+            collected_at=datetime.fromisoformat(row["collected_at"]),
+            raw_data=bytes(row["raw_data"]),
             sha256=row["sha256"],
             size_bytes=row["size_bytes"],
-
             sequence_start=row["sequence_start"],
             sequence_end=row["sequence_end"],
-
             record_sha256=row["record_sha256"],
         )

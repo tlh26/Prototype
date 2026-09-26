@@ -31,8 +31,7 @@ def decode_evidence(
         )
     except Exception as exc:
         raise IngestionError(
-            f"Invalid Base64 for evidence "
-            f"{envelope.evidence_id}"
+            f"Invalid Base64 for evidence " f"{envelope.evidence_id}"
         ) from exc
 
     if len(raw_data) != envelope.size_bytes:
@@ -43,9 +42,7 @@ def decode_evidence(
             f"received {len(raw_data)}"
         )
 
-    actual_sha256 = hashlib.sha256(
-        raw_data
-    ).hexdigest()
+    actual_sha256 = hashlib.sha256(raw_data).hexdigest()
 
     if actual_sha256 != envelope.sha256:
         raise IngestionError(
@@ -70,32 +67,22 @@ def envelope_to_record(
 
     return EvidenceRecord(
         evidence_id=envelope.evidence_id,
-
         tenant_id=envelope.tenant_id,
         tenant_hash=envelope.tenant_hash,
-
         project_id=envelope.project_id,
         instance_name=envelope.instance_name,
-
         scope=envelope.scope,
-
         source=envelope.source,
         source_path=envelope.source_path,
-
         acquisition_layer=envelope.acquisition_layer,
         acquired_from=envelope.acquired_from,
         attribution_method=envelope.attribution_method,
-
         collected_at=envelope.collected_at,
-
         raw_data=raw_data,
-
         sha256=envelope.sha256,
         size_bytes=envelope.size_bytes,
-
         sequence_start=envelope.sequence_start,
         sequence_end=envelope.sequence_end,
-
         capture_id=envelope.capture_id,
     )
 

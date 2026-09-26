@@ -29,9 +29,7 @@ def test_failed_delivery_retains_spool(
 
     agent.client = Mock()
 
-    agent.client.submit_batch.side_effect = (
-        RuntimeError("central unavailable")
-    )
+    agent.client.submit_batch.side_effect = RuntimeError("central unavailable")
 
     agent.process_batch(sample_batch)
 
@@ -45,9 +43,7 @@ def test_failed_delivery_retains_spool(
 
     assert stored == sample_batch
 
-    agent.client.submit_batch.assert_called_once_with(
-        sample_batch
-    )
+    agent.client.submit_batch.assert_called_once_with(sample_batch)
 
 
 def test_successful_delivery_removes_spool(
@@ -71,9 +67,7 @@ def test_successful_delivery_removes_spool(
 
     assert agent.spool.pending() == []
 
-    agent.client.submit_batch.assert_called_once_with(
-        sample_batch
-    )
+    agent.client.submit_batch.assert_called_once_with(sample_batch)
 
 
 def test_retry_success_removes_spool(
@@ -103,9 +97,7 @@ def test_retry_success_removes_spool(
     assert not spool_path.exists()
     assert agent.spool.pending() == []
 
-    agent.client.submit_batch.assert_called_once_with(
-        sample_batch
-    )
+    agent.client.submit_batch.assert_called_once_with(sample_batch)
 
 
 def test_retry_failure_retains_spool(
@@ -123,9 +115,7 @@ def test_retry_failure_retains_spool(
 
     agent.client = Mock()
 
-    agent.client.submit_batch.side_effect = (
-        RuntimeError("central still unavailable")
-    )
+    agent.client.submit_batch.side_effect = RuntimeError("central still unavailable")
 
     agent.retry_spool()
 
@@ -137,9 +127,7 @@ def test_retry_failure_retains_spool(
 
     assert agent.spool.load(pending[0]) == sample_batch
 
-    agent.client.submit_batch.assert_called_once_with(
-        sample_batch
-    )
+    agent.client.submit_batch.assert_called_once_with(sample_batch)
 
 
 def test_retry_multiple_batches(
@@ -187,7 +175,4 @@ def test_retry_multiple_batches(
 
     assert agent.spool.pending() == []
 
-    assert (
-        agent.client.submit_batch.call_count
-        == 2
-    )
+    assert agent.client.submit_batch.call_count == 2

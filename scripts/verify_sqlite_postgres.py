@@ -5,7 +5,6 @@ import sqlite3
 
 import psycopg
 
-
 SQLITE_PATH = "storage/evidence.db"
 
 PG_CONFIG = {
@@ -37,18 +36,19 @@ def verify_events(sqlite_conn, pg_conn):
     checked = 0
 
     for event_id, sqlite_raw, sqlite_sha256 in sqlite_cur:
-        pg_cur.execute("""
+        pg_cur.execute(
+            """
             SELECT raw_data, sha256
             FROM evidence_events
             WHERE event_id = %s
-        """, (event_id,))
+        """,
+            (event_id,),
+        )
 
         row = pg_cur.fetchone()
 
         if row is None:
-            raise RuntimeError(
-                f"Missing PostgreSQL evidence_event: {event_id}"
-            )
+            raise RuntimeError(f"Missing PostgreSQL evidence_event: {event_id}")
 
         pg_raw, pg_sha256 = row
 
@@ -56,21 +56,15 @@ def verify_events(sqlite_conn, pg_conn):
         pg_raw = bytes(pg_raw)
 
         if sqlite_raw != pg_raw:
-            raise RuntimeError(
-                f"RAW DATA MISMATCH for event: {event_id}"
-            )
+            raise RuntimeError(f"RAW DATA MISMATCH for event: {event_id}")
 
         if sqlite_sha256 != pg_sha256:
-            raise RuntimeError(
-                f"STORED SHA-256 MISMATCH for event: {event_id}"
-            )
+            raise RuntimeError(f"STORED SHA-256 MISMATCH for event: {event_id}")
 
         calculated = sha256_bytes(pg_raw)
 
         if calculated != pg_sha256:
-            raise RuntimeError(
-                f"POSTGRES RAW DATA HASH MISMATCH for event: {event_id}"
-            )
+            raise RuntimeError(f"POSTGRES RAW DATA HASH MISMATCH for event: {event_id}")
 
         checked += 1
 
@@ -99,18 +93,19 @@ def verify_records(sqlite_conn, pg_conn):
     checked = 0
 
     for evidence_id, sqlite_raw, sqlite_sha256 in sqlite_cur:
-        pg_cur.execute("""
+        pg_cur.execute(
+            """
             SELECT raw_data, sha256
             FROM evidence_records
             WHERE evidence_id = %s
-        """, (evidence_id,))
+        """,
+            (evidence_id,),
+        )
 
         row = pg_cur.fetchone()
 
         if row is None:
-            raise RuntimeError(
-                f"Missing PostgreSQL evidence_record: {evidence_id}"
-            )
+            raise RuntimeError(f"Missing PostgreSQL evidence_record: {evidence_id}")
 
         pg_raw, pg_sha256 = row
 
@@ -118,14 +113,10 @@ def verify_records(sqlite_conn, pg_conn):
         pg_raw = bytes(pg_raw)
 
         if sqlite_raw != pg_raw:
-            raise RuntimeError(
-                f"RAW DATA MISMATCH for record: {evidence_id}"
-            )
+            raise RuntimeError(f"RAW DATA MISMATCH for record: {evidence_id}")
 
         if sqlite_sha256 != pg_sha256:
-            raise RuntimeError(
-                f"STORED SHA-256 MISMATCH for record: {evidence_id}"
-            )
+            raise RuntimeError(f"STORED SHA-256 MISMATCH for record: {evidence_id}")
 
         calculated = sha256_bytes(pg_raw)
 

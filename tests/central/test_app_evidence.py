@@ -19,9 +19,7 @@ from evidenceAgent.evidenceAgent.transportModels import (
 @pytest.fixture
 def test_config(tmp_path):
     return SimpleNamespace(
-        database_path=str(
-            tmp_path / "central-test.db"
-        ),
+        database_path=str(tmp_path / "central-test.db"),
     )
 
 
@@ -51,9 +49,7 @@ def client(
         ).get_connection(config),
     )
 
-    return TestClient(
-        app_module.app
-    )
+    return TestClient(app_module.app)
 
 
 def make_envelope(
@@ -71,48 +67,26 @@ def make_envelope(
 
     return EvidenceEnvelope(
         evidence_id=evidence_id,
-
         tenant_id=tenant_id,
         tenant_hash=None,
-
         project_id=tenant_id,
         instance_name=instance_name,
-
         scope=(
             f"{tenant_id}/{instance_name}"
             if tenant_id and instance_name
             else "incus-host-01"
         ),
-
         source="auditd",
         source_path="/var/log/audit/audit.log",
-
         acquisition_layer="host",
         acquired_from="incus-host-01",
-
-        attribution_method=(
-            "incus_metadata"
-            if tenant_id
-            else "unattributed"
-        ),
-
-        collected_at=datetime.now(
-            timezone.utc
-        ),
-
-        raw_data_b64=base64.b64encode(
-            raw_data
-        ).decode("ascii"),
-
-        sha256=hashlib.sha256(
-            raw_data
-        ).hexdigest(),
-
+        attribution_method=("incus_metadata" if tenant_id else "unattributed"),
+        collected_at=datetime.now(timezone.utc),
+        raw_data_b64=base64.b64encode(raw_data).decode("ascii"),
+        sha256=hashlib.sha256(raw_data).hexdigest(),
         size_bytes=len(raw_data),
-
         sequence_start=sequence_start,
         sequence_end=sequence_end,
-
         capture_id="capture-test-001",
     )
 
@@ -144,9 +118,7 @@ def test_health_endpoint(
         lambda api_key, config: None,
     )
 
-    response = client.get(
-        "/health"
-    )
+    response = client.get("/health")
 
     assert response.status_code == 200
 
@@ -171,28 +143,16 @@ def test_submit_valid_evidence_batch(
         lambda api_key, config: None,
     )
 
-    raw_data = (
-        b"type=SYSCALL "
-        b"msg=audit(123.456:100): "
-        b"test"
-    )
+    raw_data = b"type=SYSCALL " b"msg=audit(123.456:100): " b"test"
 
-    envelope = make_envelope(
-        raw_data=raw_data
-    )
+    envelope = make_envelope(raw_data=raw_data)
 
-    batch = make_batch(
-        envelope
-    )
+    batch = make_batch(envelope)
 
     response = client.post(
         "/api/v1/evidence/batches",
-        json=batch.model_dump(
-            mode="json"
-        ),
-        headers={
-            "X-API-Key": "test-api-key"
-        },
+        json=batch.model_dump(mode="json"),
+        headers={"X-API-Key": "test-api-key"},
     )
 
     assert response.status_code == 200
@@ -200,9 +160,7 @@ def test_submit_valid_evidence_batch(
     body = response.json()
 
     assert body["status"] == "accepted"
-    assert body["agent_id"] == (
-        "agent-host-test"
-    )
+    assert body["agent_id"] == ("agent-host-test")
     assert body["received"] == 1
     assert body["stored"] == 1
 
@@ -224,29 +182,19 @@ def test_valid_evidence_is_persisted(
 
     raw_data = b"raw forensic audit evidence"
 
-    envelope = make_envelope(
-        raw_data=raw_data
-    )
+    envelope = make_envelope(raw_data=raw_data)
 
-    batch = make_batch(
-        envelope
-    )
+    batch = make_batch(envelope)
 
     response = client.post(
         "/api/v1/evidence/batches",
-        json=batch.model_dump(
-            mode="json"
-        ),
-        headers={
-            "X-API-Key": "test-api-key"
-        },
+        json=batch.model_dump(mode="json"),
+        headers={"X-API-Key": "test-api-key"},
     )
 
     assert response.status_code == 200
 
-    connection = app_module.get_connection(
-        test_config
-    )
+    connection = app_module.get_connection(test_config)
 
     try:
         row = connection.execute(
@@ -255,9 +203,7 @@ def test_valid_evidence_is_persisted(
             FROM evidence_records
             WHERE evidence_id = ?
             """,
-            (
-                envelope.evidence_id,
-            ),
+            (envelope.evidence_id,),
         ).fetchone()
 
     finally:
@@ -265,9 +211,7 @@ def test_valid_evidence_is_persisted(
 
     assert row is not None
 
-    assert row["evidence_id"] == (
-        envelope.evidence_id
-    )
+    assert row["evidence_id"] == (envelope.evidence_id)
 
     assert row["tenant_id"] == "tenant-b"
     assert row["project_id"] == "tenant-b"
@@ -277,13 +221,9 @@ def test_valid_evidence_is_persisted(
 
     assert row["raw_data"] == raw_data
 
-    assert row["sha256"] == hashlib.sha256(
-        raw_data
-    ).hexdigest()
+    assert row["sha256"] == hashlib.sha256(raw_data).hexdigest()
 
-    assert row["size_bytes"] == len(
-        raw_data
-    )
+    assert row["size_bytes"] == len(raw_data)
 
 
 def test_multiple_evidence_items_are_accepted(
@@ -330,12 +270,8 @@ def test_multiple_evidence_items_are_accepted(
 
     response = client.post(
         "/api/v1/evidence/batches",
-        json=batch.model_dump(
-            mode="json"
-        ),
-        headers={
-            "X-API-Key": "test-api-key"
-        },
+        json=batch.model_dump(mode="json"),
+        headers={"X-API-Key": "test-api-key"},
     )
 
     assert response.status_code == 200
@@ -345,26 +281,19 @@ def test_multiple_evidence_items_are_accepted(
     assert body["received"] == 3
     assert body["stored"] == 3
 
-    connection = app_module.get_connection(
-        test_config
-    )
+    connection = app_module.get_connection(test_config)
 
     try:
-        rows = connection.execute(
-            """
+        rows = connection.execute("""
             SELECT evidence_id
             FROM evidence_records
             ORDER BY evidence_id
-            """
-        ).fetchall()
+            """).fetchall()
 
     finally:
         connection.close()
 
-    evidence_ids = {
-        row["evidence_id"]
-        for row in rows
-    }
+    evidence_ids = {row["evidence_id"] for row in rows}
 
     assert evidence_ids == {
         "auditd:100",
@@ -398,25 +327,17 @@ def test_unattributed_host_evidence_is_accepted(
         instance_name=None,
     )
 
-    batch = make_batch(
-        envelope
-    )
+    batch = make_batch(envelope)
 
     response = client.post(
         "/api/v1/evidence/batches",
-        json=batch.model_dump(
-            mode="json"
-        ),
-        headers={
-            "X-API-Key": "test-api-key"
-        },
+        json=batch.model_dump(mode="json"),
+        headers={"X-API-Key": "test-api-key"},
     )
 
     assert response.status_code == 200
 
-    connection = app_module.get_connection(
-        test_config
-    )
+    connection = app_module.get_connection(test_config)
 
     try:
         row = connection.execute(
@@ -425,9 +346,7 @@ def test_unattributed_host_evidence_is_accepted(
             FROM evidence_records
             WHERE evidence_id = ?
             """,
-            (
-                envelope.evidence_id,
-            ),
+            (envelope.evidence_id,),
         ).fetchone()
 
     finally:
@@ -440,9 +359,7 @@ def test_unattributed_host_evidence_is_accepted(
     assert row["instance_name"] is None
 
     assert row["scope"] == "incus-host-01"
-    assert row["attribution_method"] == (
-        "unattributed"
-    )
+    assert row["attribution_method"] == ("unattributed")
 
 
 def test_invalid_base64_is_rejected(
@@ -461,24 +378,14 @@ def test_invalid_base64_is_rejected(
 
     envelope = make_envelope()
 
-    invalid = envelope.model_copy(
-        update={
-            "raw_data_b64": "%%%INVALID_BASE64%%%"
-        }
-    )
+    invalid = envelope.model_copy(update={"raw_data_b64": "%%%INVALID_BASE64%%%"})
 
-    batch = make_batch(
-        invalid
-    )
+    batch = make_batch(invalid)
 
     response = client.post(
         "/api/v1/evidence/batches",
-        json=batch.model_dump(
-            mode="json"
-        ),
-        headers={
-            "X-API-Key": "test-api-key"
-        },
+        json=batch.model_dump(mode="json"),
+        headers={"X-API-Key": "test-api-key"},
     )
 
     assert response.status_code == 400
@@ -505,24 +412,14 @@ def test_sha256_mismatch_is_rejected(
 
     envelope = make_envelope()
 
-    invalid = envelope.model_copy(
-        update={
-            "sha256": "0" * 64
-        }
-    )
+    invalid = envelope.model_copy(update={"sha256": "0" * 64})
 
-    batch = make_batch(
-        invalid
-    )
+    batch = make_batch(invalid)
 
     response = client.post(
         "/api/v1/evidence/batches",
-        json=batch.model_dump(
-            mode="json"
-        ),
-        headers={
-            "X-API-Key": "test-api-key"
-        },
+        json=batch.model_dump(mode="json"),
+        headers={"X-API-Key": "test-api-key"},
     )
 
     assert response.status_code == 400
@@ -549,26 +446,14 @@ def test_size_mismatch_is_rejected(
 
     envelope = make_envelope()
 
-    invalid = envelope.model_copy(
-        update={
-            "size_bytes": (
-                envelope.size_bytes + 10
-            )
-        }
-    )
+    invalid = envelope.model_copy(update={"size_bytes": (envelope.size_bytes + 10)})
 
-    batch = make_batch(
-        invalid
-    )
+    batch = make_batch(invalid)
 
     response = client.post(
         "/api/v1/evidence/batches",
-        json=batch.model_dump(
-            mode="json"
-        ),
-        headers={
-            "X-API-Key": "test-api-key"
-        },
+        json=batch.model_dump(mode="json"),
+        headers={"X-API-Key": "test-api-key"},
     )
 
     assert response.status_code == 400
@@ -599,28 +484,18 @@ def test_duplicate_evidence_is_idempotent(
         raw_data=b"idempotent evidence",
     )
 
-    batch = make_batch(
-        envelope
-    )
+    batch = make_batch(envelope)
 
     first_response = client.post(
         "/api/v1/evidence/batches",
-        json=batch.model_dump(
-            mode="json"
-        ),
-        headers={
-            "X-API-Key": "test-api-key"
-        },
+        json=batch.model_dump(mode="json"),
+        headers={"X-API-Key": "test-api-key"},
     )
 
     second_response = client.post(
         "/api/v1/evidence/batches",
-        json=batch.model_dump(
-            mode="json"
-        ),
-        headers={
-            "X-API-Key": "test-api-key"
-        },
+        json=batch.model_dump(mode="json"),
+        headers={"X-API-Key": "test-api-key"},
     )
 
     assert first_response.status_code == 200
@@ -629,9 +504,7 @@ def test_duplicate_evidence_is_idempotent(
     assert first_response.json()["stored"] == 1
     assert second_response.json()["stored"] == 1
 
-    connection = app_module.get_connection(
-        test_config
-    )
+    connection = app_module.get_connection(test_config)
 
     try:
         count = connection.execute(
@@ -640,9 +513,7 @@ def test_duplicate_evidence_is_idempotent(
             FROM evidence_records
             WHERE evidence_id = ?
             """,
-            (
-                envelope.evidence_id,
-            ),
+            (envelope.evidence_id,),
         ).fetchone()[0]
 
     finally:
@@ -681,24 +552,16 @@ def test_api_key_verification_is_called(
 
     envelope = make_envelope()
 
-    batch = make_batch(
-        envelope
-    )
+    batch = make_batch(envelope)
 
     response = client.post(
         "/api/v1/evidence/batches",
-        json=batch.model_dump(
-            mode="json"
-        ),
-        headers={
-            "X-API-Key": "test-api-key"
-        },
+        json=batch.model_dump(mode="json"),
+        headers={"X-API-Key": "test-api-key"},
     )
 
     assert response.status_code == 200
 
     assert len(calls) == 1
 
-    assert calls[0]["api_key"] == (
-        "test-api-key"
-    )
+    assert calls[0]["api_key"] == ("test-api-key")

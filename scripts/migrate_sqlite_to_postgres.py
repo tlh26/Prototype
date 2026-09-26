@@ -7,7 +7,6 @@ from pathlib import Path
 
 import psycopg
 
-
 SQLITE_PATH = Path("storage/evidence.db")
 
 
@@ -18,8 +17,7 @@ def sha256_bytes(data: bytes) -> str:
 def migrate_events(sqlite_conn, pg_conn):
     print("Migrating evidence_events...")
 
-    sqlite_cursor = sqlite_conn.execute(
-        """
+    sqlite_cursor = sqlite_conn.execute("""
         SELECT
             event_id,
             tenant_id,
@@ -40,8 +38,7 @@ def migrate_events(sqlite_conn, pg_conn):
             created_at
         FROM evidence_events
         ORDER BY rowid
-        """
-    )
+        """)
 
     count = 0
 
@@ -157,8 +154,7 @@ def migrate_events(sqlite_conn, pg_conn):
 def migrate_records(sqlite_conn, pg_conn):
     print("Migrating evidence_records...")
 
-    sqlite_cursor = sqlite_conn.execute(
-        """
+    sqlite_cursor = sqlite_conn.execute("""
         SELECT
             evidence_id,
             tenant_id,
@@ -181,8 +177,7 @@ def migrate_records(sqlite_conn, pg_conn):
             record_sha256
         FROM evidence_records
         ORDER BY rowid
-        """
-    )
+        """)
 
     count = 0
 
@@ -305,16 +300,12 @@ def migrate_records(sqlite_conn, pg_conn):
 
 def main():
     if not SQLITE_PATH.exists():
-        raise FileNotFoundError(
-            f"SQLite database not found: {SQLITE_PATH}"
-        )
+        raise FileNotFoundError(f"SQLite database not found: {SQLITE_PATH}")
 
     postgres_url = os.environ.get("CENTRAL_DATABASE_URL")
 
     if not postgres_url:
-        raise RuntimeError(
-            "CENTRAL_DATABASE_URL is not set."
-        )
+        raise RuntimeError("CENTRAL_DATABASE_URL is not set.")
 
     print("Connecting to PostgreSQL...")
 

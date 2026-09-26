@@ -14,7 +14,6 @@ from typing import Generator, Optional
 
 from evidence.tenant import TenantContext
 
-
 _current_tenant: ContextVar[Optional[TenantContext]] = ContextVar(
     "current_tenant",
     default=None,
@@ -34,9 +33,7 @@ def get_current_tenant() -> TenantContext:
     tenant = _current_tenant.get()
 
     if tenant is None:
-        raise RuntimeError(
-            "No tenant context is active."
-        )
+        raise RuntimeError("No tenant context is active.")
 
     return tenant
 

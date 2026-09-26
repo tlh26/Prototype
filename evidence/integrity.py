@@ -1,5 +1,5 @@
 """
-Class does not reach into files and calculate hashes itself. 
+Class does not reach into files and calculate hashes itself.
 
 Represents the trustworthiness and accuracy of evidence.
         Class: IntegrityInformation

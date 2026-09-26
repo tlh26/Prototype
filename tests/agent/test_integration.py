@@ -3,6 +3,7 @@ from unittest.mock import Mock
 from evidenceAgent.evidenceAgent.agent import EvidenceAgent
 from evidenceAgent.evidenceAgent.models import EvidenceType
 
+
 def test_end_to_end_local_agent_pipeline(
     agent_config,
     auth_log,
@@ -19,7 +20,7 @@ def test_end_to_end_local_agent_pipeline(
     )
 
     access_log.write_text(
-        '10.0.0.1 - - [31/Aug/2026:14:00:00 +0200] '
+        "10.0.0.1 - - [31/Aug/2026:14:00:00 +0200] "
         '"GET /api/users HTTP/1.1" 200 100\n',
         encoding="utf-8",
     )
@@ -28,9 +29,7 @@ def test_end_to_end_local_agent_pipeline(
 
     submitted = []
 
-    agent.client.submit = Mock(
-        side_effect=lambda event: submitted.append(event)
-    )
+    agent.client.submit = Mock(side_effect=lambda event: submitted.append(event))
 
     # First collection establishes the filesystem baseline
     # and collects the existing authentication/access evidence.

@@ -41,16 +41,12 @@ class TenantContext(BaseModel):
 
     tenant_id: str = Field(
         ...,
-        description=(
-            "Canonical internal identifier for the logical tenant."
-        ),
+        description=("Canonical internal identifier for the logical tenant."),
     )
 
     tenant_name: str = Field(
         ...,
-        description=(
-            "Human-readable name of the logical tenant."
-        ),
+        description=("Human-readable name of the logical tenant."),
     )
 
     tenant_hash: str = Field(
@@ -64,20 +60,17 @@ class TenantContext(BaseModel):
     # ---------------------------------------------------------
     # Platform Context
     # ---------------------------------------------------------
-    ##This is to be changed, platform should be defined using enums.py 
+    ##This is to be changed, platform should be defined using enums.py
     platform: CloudPlatform = Field(
-    ...,
-    description=(
-        "Cloud platform associated with the tenant."
-    ),
-)
-    ##This is to be changed, platform should be defined using enums.py 
+        ...,
+        description=("Cloud platform associated with the tenant."),
+    )
+    ##This is to be changed, platform should be defined using enums.py
 
     platform_project_id: str = Field(
         ...,
         description=(
-            "Project or tenant identifier assigned by the "
-            "underlying cloud platform."
+            "Project or tenant identifier assigned by the " "underlying cloud platform."
         ),
     )
 
@@ -87,16 +80,13 @@ class TenantContext(BaseModel):
 
     description: Optional[str] = Field(
         default=None,
-        description=(
-            "Optional descriptive information about the tenant."
-        ),
+        description=("Optional descriptive information about the tenant."),
     )
 
     enabled: bool = Field(
         default=True,
         description=(
-            "Whether the tenant is currently considered active "
-            "within the prototype."
+            "Whether the tenant is currently considered active " "within the prototype."
         ),
     )
 
@@ -106,10 +96,7 @@ class TenantContext(BaseModel):
 
     created_at: str = Field(
         default_factory=lambda: current_timestamp().isoformat(),
-        description=(
-            "Timestamp at which this TenantContext instance "
-            "was created."
-        ),
+        description=("Timestamp at which this TenantContext instance " "was created."),
     )
 
     # ---------------------------------------------------------

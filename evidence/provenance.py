@@ -1,6 +1,6 @@
 """
 Answers: "Where exactly did this evidence originate?"
-For example: 
+For example:
     Provenance
 │
 ├── source_type: INCUS

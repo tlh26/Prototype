@@ -6,6 +6,7 @@ from common.hashing import HashingService
 
 hashing_service = HashingService()
 
+
 def test_incus_tenant_context():
     tenant = TenantContext(
         tenant_id="cloud-a",
@@ -19,6 +20,7 @@ def test_incus_tenant_context():
     assert tenant.platform_project_id == "cloud-a"
     assert tenant.tenant_name == "tenant-a"
     assert tenant.platform == CloudPlatform.INCUS
+
 
 def test_tenant_id_matches_project_id():
     tenant = TenantContext(
@@ -89,8 +91,10 @@ def test_hash_dictionary_key_order_independent():
         "tenant_id": "cloud-a",
     }
 
-    assert HashingService.hash_dictionary(first) == \
-           HashingService.hash_dictionary(second)
+    assert HashingService.hash_dictionary(first) == HashingService.hash_dictionary(
+        second
+    )
+
 
 def test_tenant_hash_deterministic():
     identity = "incus:cloud-a"

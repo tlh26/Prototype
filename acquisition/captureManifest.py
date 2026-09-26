@@ -79,9 +79,7 @@ class CaptureManifest(BaseModel):
 
     status: CaptureStatus = CaptureStatus.FAILED
 
-    sources: tuple[CaptureSourceResult, ...] = Field(
-        default_factory=tuple
-    )
+    sources: tuple[CaptureSourceResult, ...] = Field(default_factory=tuple)
 
     @property
     def successful_sources(self) -> tuple[CaptureSourceResult, ...]:
@@ -122,9 +120,7 @@ class CaptureManifest(BaseModel):
             project_id=project_id,
             instance_name=instance_name,
             started_at=(
-                started_at
-                if started_at is not None
-                else datetime.now(timezone.utc)
+                started_at if started_at is not None else datetime.now(timezone.utc)
             ),
         )
 

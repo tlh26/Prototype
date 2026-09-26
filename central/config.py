@@ -28,6 +28,4 @@ class CentralConfig:
 
     def __post_init__(self) -> None:
         if not self.database_url:
-            raise RuntimeError(
-                "CENTRAL_DATABASE_URL is not configured."
-            )
+            raise RuntimeError("CENTRAL_DATABASE_URL is not configured.")

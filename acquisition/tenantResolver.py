@@ -22,24 +22,16 @@ class TenantResolver:
     ) -> TenantContext:
 
         if not project_id or not project_id.strip():
-            raise ValueError(
-                "Incus project ID cannot be empty."
-            )
+            raise ValueError("Incus project ID cannot be empty.")
 
         project_id = project_id.strip()
 
         if tenant_name is None:
             tenant_name = f"tenant-{project_id.split('-')[-1]}"
 
-        canonical_identity = (
-            f"incus:{project_id}"
-        )
+        canonical_identity = f"incus:{project_id}"
 
-        tenant_hash = (
-            self.hashing_service.sha256(
-                canonical_identity
-            )
-        )
+        tenant_hash = self.hashing_service.sha256(canonical_identity)
 
         return TenantContext(
             tenant_id=project_id,
@@ -49,5 +41,3 @@ class TenantResolver:
             platform_project_id=project_id,
             description=description,
         )
-
-

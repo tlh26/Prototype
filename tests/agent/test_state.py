@@ -56,8 +56,6 @@ def test_state_file_contains_sequence(state_dir):
 
     state.set_sequence(5)
 
-    data = json.loads(
-        state.path.read_text(encoding="utf-8")
-    )
+    data = json.loads(state.path.read_text(encoding="utf-8"))
 
     assert data["sequence"] == 5

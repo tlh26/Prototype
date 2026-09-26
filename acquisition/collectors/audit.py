@@ -26,23 +26,19 @@ from acquisition.collectors.hostExec import HostExecutor
 from common.hashing import HashingService
 from evidence.tenant import TenantContext
 
-
 # ---------------------------------------------------------------------------
 # Audit sequence
 # ---------------------------------------------------------------------------
 
-_AUDIT_SEQUENCE_RE = re.compile(
-    rb"msg=audit\([^)]*:(\d+)\)"
-)
+_AUDIT_SEQUENCE_RE = re.compile(rb"msg=audit\([^)]*:(\d+)\)")
 
-_AUDIT_ID_RE = re.compile(
-    rb"msg=audit\((\d+\.\d+):(\d+)\)"
-)
+_AUDIT_ID_RE = re.compile(rb"msg=audit\((\d+\.\d+):(\d+)\)")
 
 
 # ---------------------------------------------------------------------------
 # Acquisition-level event
 # ---------------------------------------------------------------------------
+
 
 class AuditEvent(BaseModel):
     """
@@ -74,6 +70,7 @@ class AuditEvent(BaseModel):
 # ---------------------------------------------------------------------------
 # Evidence model
 # ---------------------------------------------------------------------------
+
 
 class AuditEvidence(BaseModel):
     """
@@ -121,6 +118,7 @@ class AuditEvidence(BaseModel):
 # Collection result
 # ---------------------------------------------------------------------------
 
+
 @dataclass(frozen=True)
 class AuditCollectionResult:
     """
@@ -139,9 +137,8 @@ class AuditCollectionResult:
 # Collector
 # ---------------------------------------------------------------------------
 
-class AuditCollector(
-    EvidenceCollector[AuditEvidence]
-):
+
+class AuditCollector(EvidenceCollector[AuditEvidence]):
     """
     Incremental Linux auditd collector for an Incus host.
 
@@ -167,9 +164,7 @@ class AuditCollector(
     against the host rather than an Incus container.
     """
 
-    DEFAULT_AUDIT_PATH = (
-        "/var/log/audit/audit.log"
-    )
+    DEFAULT_AUDIT_PATH = "/var/log/audit/audit.log"
 
     def __init__(
         self,
@@ -181,19 +176,11 @@ class AuditCollector(
     ) -> None:
         self.executor = executor
 
-        self.checkpoint_store = (
-            checkpoint_store
-        )
+        self.checkpoint_store = checkpoint_store
 
-        self.hashing_service = (
-            hashing_service
-            or HashingService()
-        )
+        self.hashing_service = hashing_service or HashingService()
 
-        self.attributor = (
-            attributor
-            or IncusAuditAttributor()
-        )
+        self.attributor = attributor or IncusAuditAttributor()
 
         self.host_id = host_id
 
@@ -222,29 +209,18 @@ class AuditCollector(
             3. commit the returned checkpoint
         """
 
-        self._validate_audit_path(
-            audit_path
-        )
+        self._validate_audit_path(audit_path)
 
-        checkpoint = (
-            self.checkpoint_store.load()
-        )
+        checkpoint = self.checkpoint_store.load()
 
-        metadata = self._stat_audit_file(
-            audit_path
-        )
+        metadata = self._stat_audit_file(audit_path)
 
-        canonical_path = str(
-            Path(audit_path).resolve()
-        )
+        canonical_path = str(Path(audit_path).resolve())
 
-        same_source = (
-            checkpoint is not None
-            and checkpoint.matches_source(
-                source_path=canonical_path,
-                file_device=metadata["device"],
-                file_inode=metadata["inode"],
-            )
+        same_source = checkpoint is not None and checkpoint.matches_source(
+            source_path=canonical_path,
+            file_device=metadata["device"],
+            file_inode=metadata["inode"],
         )
 
         if same_source:
@@ -254,12 +230,10 @@ class AuditCollector(
             start_offset = 0
             previous_pending = b""
 
-        start_offset = (
-            self._calculate_start_offset(
-                checkpoint=checkpoint,
-                metadata=metadata,
-                audit_path=audit_path,
-            )
+        start_offset = self._calculate_start_offset(
+            checkpoint=checkpoint,
+            metadata=metadata,
+            audit_path=audit_path,
         )
 
         # if metadata["size"] < start_offset:
@@ -274,10 +248,7 @@ class AuditCollector(
             previous_pending = b""
             same_source = False
 
-        new_size = (
-            metadata["size"]
-            - start_offset
-        )
+        new_size = metadata["size"] - start_offset
 
         # new_data = self._read_audit_range(
         #     audit_path=audit_path,
@@ -297,39 +268,22 @@ class AuditCollector(
         #     else b""
         # )
 
-        checkpoint_matches_source = (
-            self._checkpoint_matches_source(
-                checkpoint=checkpoint,
-                metadata=metadata,
-                audit_path=audit_path,
-            )
+        checkpoint_matches_source = self._checkpoint_matches_source(
+            checkpoint=checkpoint,
+            metadata=metadata,
+            audit_path=audit_path,
         )
 
-        previous_pending = (
-            checkpoint.pending_data
-            if checkpoint_matches_source
-            else b""
-        )
+        previous_pending = checkpoint.pending_data if checkpoint_matches_source else b""
 
-        combined_data = (
-            previous_pending
-            + new_data
-        )
+        combined_data = previous_pending + new_data
 
-        events, pending_data = (
-            self._parse_incremental_data(
-                combined_data
-            )
-        )
+        events, pending_data = self._parse_incremental_data(combined_data)
 
         evidence: list[AuditEvidence] = []
 
         for event in events:
-            attribution = (
-                self.attributor.attribute(
-                    event.raw_data
-                )
-            )
+            attribution = self.attributor.attribute(event.raw_data)
 
             item = self._build_evidence(
                 event=event,
@@ -346,31 +300,17 @@ class AuditCollector(
         # point to the beginning of pending_data.
         # ------------------------------------------------------------------
 
-        pending_size = len(
-            pending_data
-        )
+        pending_size = len(pending_data)
 
-        safe_offset = (
-            metadata["size"]
-            - pending_size
-        )
+        safe_offset = metadata["size"] - pending_size
 
-        last_sequence = (
-            max(
-                (
-                    event.sequence
-                    for event in events
-                ),
-                default=(
-                    checkpoint.last_sequence
-                    if checkpoint
-                    else None
-                ),
-            )
+        last_sequence = max(
+            (event.sequence for event in events),
+            default=(checkpoint.last_sequence if checkpoint else None),
         )
 
         next_checkpoint = AuditCheckpoint(
-            #source_path=audit_path,
+            # source_path=audit_path,
             source_path=canonical_path,
             file_device=metadata["device"],
             file_inode=metadata["inode"],
@@ -392,9 +332,7 @@ class AuditCollector(
         Commit a checkpoint after evidence persistence succeeds.
         """
 
-        self.checkpoint_store.save(
-            checkpoint
-        )
+        self.checkpoint_store.save(checkpoint)
 
     # =======================================================================
     # COMPATIBILITY API
@@ -423,18 +361,14 @@ class AuditCollector(
         has been migrated to collect_new().
         """
 
-        result = self.collect_new(
-            audit_path=audit_path
-        )
+        result = self.collect_new(audit_path=audit_path)
 
         matching = [
             evidence
             for evidence in result.evidence
             if (
-                evidence.tenant_id
-                == tenant.tenant_id
-                and evidence.instance_name
-                == instance_name
+                evidence.tenant_id == tenant.tenant_id
+                and evidence.instance_name == instance_name
             )
         ]
 
@@ -446,10 +380,7 @@ class AuditCollector(
                 source=self.source,
             )
 
-        combined_raw = b"".join(
-            evidence.raw_data
-            for evidence in matching
-        )
+        combined_raw = b"".join(evidence.raw_data for evidence in matching)
 
         sequences = [
             evidence.sequence_start
@@ -469,33 +400,18 @@ class AuditCollector(
             tenant_hash=tenant.tenant_hash,
             project_id=tenant.platform_project_id,
             instance_name=instance_name,
-            scope=(
-                f"{tenant.platform_project_id}/"
-                f"{instance_name}"
-            ),
+            scope=(f"{tenant.platform_project_id}/" f"{instance_name}"),
             source=self.source,
             source_path=audit_path,
             acquisition_layer="host",
             acquired_from=self.host_id,
             attribution_method="incus_subject",
-            collected_at=datetime.now(
-                timezone.utc
-            ),
+            collected_at=datetime.now(timezone.utc),
             raw_data=combined_raw,
-            sha256=self.hashing_service.sha256(
-                combined_raw
-            ),
+            sha256=self.hashing_service.sha256(combined_raw),
             size_bytes=len(combined_raw),
-            sequence_start=(
-                min(sequences)
-                if sequences
-                else None
-            ),
-            sequence_end=(
-                max(sequences)
-                if sequences
-                else None
-            ),
+            sequence_start=(min(sequences) if sequences else None),
+            sequence_end=(max(sequences) if sequences else None),
         )
 
     # =======================================================================
@@ -526,9 +442,7 @@ class AuditCollector(
         if not raw_data:
             return [], b""
 
-        lines = raw_data.splitlines(
-            keepends=True
-        )
+        lines = raw_data.splitlines(keepends=True)
 
         complete_lines: list[bytes] = []
         pending_line = b""
@@ -536,9 +450,7 @@ class AuditCollector(
         if lines:
             last_line = lines[-1]
 
-            if not last_line.endswith(
-                b"\n"
-            ):
+            if not last_line.endswith(b"\n"):
                 pending_line = last_line
                 lines = lines[:-1]
 
@@ -551,18 +463,14 @@ class AuditCollector(
             if b"msg=audit(" not in line:
                 continue
 
-            complete_lines.append(
-                line + b"\n"
-            )
+            complete_lines.append(line + b"\n")
 
         if pending_line:
             pending = pending_line
         else:
             pending = b""
 
-        events = cls._group_records(
-            complete_lines
-        )
+        events = cls._group_records(complete_lines)
 
         if not events:
             return [], pending
@@ -588,7 +496,7 @@ class AuditCollector(
         )
 
         complete_events: list[AuditEvent] = []
-        #highest_event: AuditEvent | None = None
+        # highest_event: AuditEvent | None = None
 
         # for event in events:
         #     if (
@@ -608,10 +516,7 @@ class AuditCollector(
             complete_events.append(event)
 
         if highest_event is not None:
-            pending = (
-                highest_event.raw_data
-                + pending
-            )
+            pending = highest_event.raw_data + pending
 
         return complete_events, pending
 
@@ -631,7 +536,7 @@ class AuditCollector(
         """
 
         grouped: dict[
-           #int,
+            # int,
             tuple[str, int],
             list[bytes],
         ] = {}
@@ -646,11 +551,7 @@ class AuditCollector(
             # if sequence is None:
             #     continue
 
-            identity = (
-                cls._extract_audit_identity(
-                    record
-                )
-            )
+            identity = cls._extract_audit_identity(record)
 
             if identity is None:
                 continue
@@ -686,9 +587,7 @@ class AuditCollector(
                 AuditEvent(
                     audit_timestamp=audit_timestamp,
                     sequence=sequence,
-                    raw_data=b"".join(
-                        event_records
-                    ),
+                    raw_data=b"".join(event_records),
                 )
             )
 
@@ -707,25 +606,14 @@ class AuditCollector(
     ) -> AuditEvidence:
         raw_data = event.raw_data
 
-        evidence_hash = (
-            self.hashing_service.sha256(
-                raw_data
-            )
-        )
+        evidence_hash = self.hashing_service.sha256(raw_data)
 
-        tenant_id = (
-            attribution.tenant_id
-        )
+        tenant_id = attribution.tenant_id
 
-        instance_name = (
-            attribution.instance_id
-        )
+        instance_name = attribution.instance_id
 
         if tenant_id is not None:
-            scope = (
-                f"{tenant_id}/"
-                f"{instance_name}"
-            )
+            scope = f"{tenant_id}/" f"{instance_name}"
         else:
             scope = self.host_id
 
@@ -747,12 +635,8 @@ class AuditCollector(
             source_path=audit_path,
             acquisition_layer="host",
             acquired_from=self.host_id,
-            attribution_method=(
-                attribution.method
-            ),
-            collected_at=datetime.now(
-                timezone.utc
-            ),
+            attribution_method=(attribution.method),
+            collected_at=datetime.now(timezone.utc),
             raw_data=raw_data,
             sha256=evidence_hash,
             size_bytes=len(raw_data),
@@ -775,17 +659,9 @@ class AuditCollector(
         Produce deterministic identity for one host audit event.
         """
 
-        digest = hashlib.sha256(
-            raw_data
-        ).hexdigest()
+        digest = hashlib.sha256(raw_data).hexdigest()
 
-        return (
-            f"auditd:"
-            f"{host_id}:"
-            f"{sequence}:"
-            f"{audit_timestamp}:"
-            f"{digest}"
-        )
+        return f"auditd:" f"{host_id}:" f"{sequence}:" f"{audit_timestamp}:" f"{digest}"
 
     @staticmethod
     def _make_batch_id(
@@ -794,16 +670,9 @@ class AuditCollector(
         instance_name: str,
         raw_data: bytes,
     ) -> str:
-        digest = hashlib.sha256(
-            raw_data
-        ).hexdigest()
+        digest = hashlib.sha256(raw_data).hexdigest()
 
-        return (
-            f"auditd-batch:"
-            f"{tenant_id}:"
-            f"{instance_name}:"
-            f"{digest}"
-        )
+        return f"auditd-batch:" f"{tenant_id}:" f"{instance_name}:" f"{digest}"
 
     # =======================================================================
     # HOST FILE ACCESS
@@ -833,30 +702,16 @@ class AuditCollector(
             ) from exc
 
         if result.returncode != 0:
-            stderr = (
-                result.stderr.decode(
-                    errors="replace"
-                ).strip()
-            )
+            stderr = result.stderr.decode(errors="replace").strip()
 
             raise CollectorError(
-                "Failed to stat host audit log"
-                + (
-                    f": {stderr}"
-                    if stderr
-                    else ""
-                ),
+                "Failed to stat host audit log" + (f": {stderr}" if stderr else ""),
                 source=self.source,
             )
 
         try:
             device, inode, size = (
-                int(value)
-                for value in (
-                    result.stdout.decode(
-                        "utf-8"
-                    ).strip().split()
-                )
+                int(value) for value in (result.stdout.decode("utf-8").strip().split())
             )
         except (
             ValueError,
@@ -905,19 +760,10 @@ class AuditCollector(
             ) from exc
 
         if result.returncode != 0:
-            stderr = (
-                result.stderr.decode(
-                    errors="replace"
-                ).strip()
-            )
+            stderr = result.stderr.decode(errors="replace").strip()
 
             raise CollectorError(
-                "Failed to read host audit log"
-                + (
-                    f": {stderr}"
-                    if stderr
-                    else ""
-                ),
+                "Failed to read host audit log" + (f": {stderr}" if stderr else ""),
                 source=self.source,
             )
 
@@ -952,16 +798,10 @@ class AuditCollector(
         audit_path: str,
     ) -> None:
         if not audit_path.strip():
-            raise ValueError(
-                "audit_path must not be empty"
-            )
+            raise ValueError("audit_path must not be empty")
 
-        if not audit_path.startswith(
-            "/"
-        ):
-            raise ValueError(
-                "audit_path must be absolute"
-            )
+        if not audit_path.startswith("/"):
+            raise ValueError("audit_path must be absolute")
 
     # =======================================================================
     # LEGACY HELPERS
@@ -984,20 +824,16 @@ class AuditCollector(
 
     @staticmethod
     def _extract_audit_identity(
-    record: bytes,
+        record: bytes,
     ) -> tuple[str, int] | None:
         match = _AUDIT_ID_RE.search(record)
 
         if not match:
             return None
 
-        timestamp = match.group(1).decode(
-            "ascii"
-        )
+        timestamp = match.group(1).decode("ascii")
 
-        sequence = int(
-            match.group(2)
-        )
+        sequence = int(match.group(2))
 
         return timestamp, sequence
 
@@ -1015,22 +851,13 @@ class AuditCollector(
 
         records = []
 
-        for line in raw_data.splitlines(
-            keepends=True
-        ):
+        for line in raw_data.splitlines(keepends=True):
             line = line.strip()
 
-            if (
-                line
-                and b"msg=audit(" in line
-            ):
-                records.append(
-                    line + b"\n"
-                )
+            if line and b"msg=audit(" in line:
+                records.append(line + b"\n")
 
-        return cls._group_records(
-            records
-        )
+        return cls._group_records(records)
 
     @staticmethod
     def _extract_sequence_range(
@@ -1039,12 +866,7 @@ class AuditCollector(
         int | None,
         int | None,
     ]:
-        sequences = [
-            int(match.group(2))
-            for match in _AUDIT_ID_RE.finditer(
-                raw_data
-            )
-        ]
+        sequences = [int(match.group(2)) for match in _AUDIT_ID_RE.finditer(raw_data)]
 
         if not sequences:
             return None, None
@@ -1053,7 +875,6 @@ class AuditCollector(
             min(sequences),
             max(sequences),
         )
-
 
     @staticmethod
     def _checkpoint_matches_source(
@@ -1068,16 +889,10 @@ class AuditCollector(
         if checkpoint.source_path != audit_path:
             return False
 
-        if (
-            checkpoint.file_device
-            != metadata["device"]
-        ):
+        if checkpoint.file_device != metadata["device"]:
             return False
 
-        if (
-            checkpoint.file_inode
-            != metadata["inode"]
-        ):
+        if checkpoint.file_inode != metadata["inode"]:
             return False
 
         if metadata["size"] < checkpoint.offset:

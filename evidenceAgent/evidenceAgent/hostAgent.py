@@ -9,7 +9,6 @@ from .serialization import audit_evidence_to_envelope
 from .spool import EvidenceSpool
 from .transportModels import EvidenceBatch
 
-
 if TYPE_CHECKING:
     from acquisition.checkpoint import AuditCheckpoint
     from acquisition.collectors.audit import AuditCollector
@@ -61,9 +60,7 @@ class HostEvidenceAgent:
         self.config = config
         self.collector = collector
 
-        self.spool = EvidenceSpool(
-            str(config.spool_directory)
-        )
+        self.spool = EvidenceSpool(str(config.spool_directory))
 
         self.client = CentralEvidenceClient(
             base_url=config.central_url,
@@ -78,17 +75,10 @@ class HostEvidenceAgent:
         checkpoint. The returned checkpoint is NOT committed here.
         """
 
-        result = self.collector.collect_new(
-            audit_path=str(
-                self.config.audit_path
-            )
-        )
+        result = self.collector.collect_new(audit_path=str(self.config.audit_path))
 
         envelopes = tuple(
-            audit_evidence_to_envelope(
-                evidence
-            )
-            for evidence in result.evidence
+            audit_evidence_to_envelope(evidence) for evidence in result.evidence
         )
 
         batch = EvidenceBatch(
@@ -167,9 +157,6 @@ class HostEvidenceAgent:
             except Exception as exc:
                 all_delivered = False
 
-                print(
-                    "[host-agent] spool retry failed: "
-                    f"{path.name}: {exc}"
-                )
+                print("[host-agent] spool retry failed: " f"{path.name}: {exc}")
 
         return all_delivered

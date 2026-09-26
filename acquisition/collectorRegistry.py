@@ -25,14 +25,10 @@ class CollectorRegistry:
         source = collector.source
 
         if not source.strip():
-            raise ValueError(
-                "collector source must not be empty"
-            )
+            raise ValueError("collector source must not be empty")
 
         if source in self._collectors:
-            raise ValueError(
-                f"Collector already registered: {source}"
-            )
+            raise ValueError(f"Collector already registered: {source}")
 
         self._collectors[source] = collector
 
@@ -47,9 +43,7 @@ class CollectorRegistry:
         try:
             return self._collectors[source]
         except KeyError as exc:
-            raise KeyError(
-                f"No collector registered for source: {source}"
-            ) from exc
+            raise KeyError(f"No collector registered for source: {source}") from exc
 
     def has(
         self,
@@ -58,6 +52,4 @@ class CollectorRegistry:
         return source in self._collectors
 
     def sources(self) -> tuple[str, ...]:
-        return tuple(
-            sorted(self._collectors.keys())
-        )
+        return tuple(sorted(self._collectors.keys()))

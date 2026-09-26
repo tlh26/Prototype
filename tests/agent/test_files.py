@@ -27,9 +27,7 @@ def test_new_file_is_detected(
         state_dir,
     )
 
-    watched_directory.joinpath(
-        "new.txt"
-    ).write_text(
+    watched_directory.joinpath("new.txt").write_text(
         "hello",
         encoding="utf-8",
     )
@@ -106,22 +104,10 @@ def test_multiple_new_files_are_detected(
 
     assert len(events) == 3
 
-    resources = {
-        event.resource
-        for event in events
-    }
+    resources = {event.resource for event in events}
 
-    assert any(
-        resource.endswith("a.txt")
-        for resource in resources
-    )
+    assert any(resource.endswith("a.txt") for resource in resources)
 
-    assert any(
-        resource.endswith("b.txt")
-        for resource in resources
-    )
+    assert any(resource.endswith("b.txt") for resource in resources)
 
-    assert any(
-        resource.endswith("c.txt")
-        for resource in resources
-    )
+    assert any(resource.endswith("c.txt") for resource in resources)

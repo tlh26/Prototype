@@ -8,7 +8,6 @@ import sqlite3
 import sys
 from pathlib import Path
 
-
 # ============================================================================
 # Project imports
 # ============================================================================
@@ -20,7 +19,6 @@ if str(PROJECT_ROOT) not in sys.path:
 
 
 from evidenceAgent.evidenceAgent.spool import EvidenceSpool
-
 
 # ============================================================================
 # Configuration
@@ -49,23 +47,21 @@ CENTRAL_DB = os.getenv(
     "storage/evidence.db",
 )
 
-REQUEST_TIMEOUT = int(
-    os.getenv("EVIDENCE_REQUEST_TIMEOUT", "30")
-)
+REQUEST_TIMEOUT = int(os.getenv("EVIDENCE_REQUEST_TIMEOUT", "30"))
 
-TLS_VERIFY = (
-    os.getenv("EVIDENCE_TLS_VERIFY", "true").lower()
-    not in {"0", "false", "no"}
-)
+TLS_VERIFY = os.getenv("EVIDENCE_TLS_VERIFY", "true").lower() not in {
+    "0",
+    "false",
+    "no",
+}
 
-BATCH_ENDPOINT = (
-    f"{CENTRAL_URL.rstrip('/')}/api/v1/evidence/batches"
-)
+BATCH_ENDPOINT = f"{CENTRAL_URL.rstrip('/')}/api/v1/evidence/batches"
 
 
 # ============================================================================
 # Output helpers
 # ============================================================================
+
 
 def section(number: int, title: str) -> None:
     print()
@@ -95,6 +91,7 @@ def require(condition: bool, message: str) -> None:
 # Spool loading
 # ============================================================================
 
+
 def load_spool_file() -> tuple[EvidenceSpool, Path]:
     section(
         1,
@@ -117,13 +114,9 @@ def load_spool_file() -> tuple[EvidenceSpool, Path]:
         f"Spool path is not a regular file: {SPOOL_FILE}",
     )
 
-    spool = EvidenceSpool(
-        str(SPOOL_FILE.parent)
-    )
+    spool = EvidenceSpool(str(SPOOL_FILE.parent))
 
-    passed(
-        f"Spool file exists: {SPOOL_FILE}"
-    )
+    passed(f"Spool file exists: {SPOOL_FILE}")
 
     return spool, SPOOL_FILE
 
@@ -131,6 +124,7 @@ def load_spool_file() -> tuple[EvidenceSpool, Path]:
 # ============================================================================
 # Batch validation
 # ============================================================================
+
 
 def validate_batch(batch) -> None:
     section(
@@ -140,10 +134,7 @@ def validate_batch(batch) -> None:
 
     require(
         batch.agent_id == "agent-host-smoke-test",
-        (
-            "Unexpected agent_id: "
-            f"{batch.agent_id!r}"
-        ),
+        ("Unexpected agent_id: " f"{batch.agent_id!r}"),
     )
 
     require(
@@ -151,22 +142,17 @@ def validate_batch(batch) -> None:
         "Spool batch contains no evidence.",
     )
 
-    print(
-        f"  agent_id:       {batch.agent_id}"
-    )
+    print(f"  agent_id:       {batch.agent_id}")
 
-    print(
-        f"  evidence count: {len(batch.evidence)}"
-    )
+    print(f"  evidence count: {len(batch.evidence)}")
 
-    passed(
-        "EvidenceSpool.load() reconstructed the EvidenceBatch."
-    )
+    passed("EvidenceSpool.load() reconstructed the EvidenceBatch.")
 
 
 # ============================================================================
 # Independent envelope verification
 # ============================================================================
+
 
 def verify_envelope(envelope) -> None:
     """
@@ -182,8 +168,7 @@ def verify_envelope(envelope) -> None:
         )
     except Exception as exc:
         raise RuntimeError(
-            f"Invalid Base64 for evidence "
-            f"{envelope.evidence_id}"
+            f"Invalid Base64 for evidence " f"{envelope.evidence_id}"
         ) from exc
 
     require(
@@ -196,9 +181,7 @@ def verify_envelope(envelope) -> None:
         ),
     )
 
-    actual_sha256 = hashlib.sha256(
-        raw_data
-    ).hexdigest()
+    actual_sha256 = hashlib.sha256(raw_data).hexdigest()
 
     require(
         actual_sha256 == envelope.sha256,
@@ -220,14 +203,13 @@ def validate_all_evidence(batch) -> None:
     for envelope in batch.evidence:
         verify_envelope(envelope)
 
-    passed(
-        "All envelopes passed Base64, size, and SHA-256 verification."
-    )
+    passed("All envelopes passed Base64, size, and SHA-256 verification.")
 
 
 # ============================================================================
 # Batch metadata
 # ============================================================================
+
 
 def inspect_batch_metadata(batch) -> None:
     section(
@@ -239,38 +221,26 @@ def inspect_batch_metadata(batch) -> None:
     unattributed = 0
 
     for envelope in batch.evidence:
-        if (
-            envelope.tenant_id is not None
-            or envelope.instance_name is not None
-        ):
+        if envelope.tenant_id is not None or envelope.instance_name is not None:
             attributed += 1
         else:
             unattributed += 1
 
-    print(
-        f"  agent_id:       {batch.agent_id}"
-    )
+    print(f"  agent_id:       {batch.agent_id}")
 
-    print(
-        f"  evidence count: {len(batch.evidence)}"
-    )
+    print(f"  evidence count: {len(batch.evidence)}")
 
-    print(
-        f"  attributed:     {attributed}"
-    )
+    print(f"  attributed:     {attributed}")
 
-    print(
-        f"  unattributed:   {unattributed}"
-    )
+    print(f"  unattributed:   {unattributed}")
 
-    passed(
-        "Batch metadata inspection completed."
-    )
+    passed("Batch metadata inspection completed.")
 
 
 # ============================================================================
 # SQLite inspection
 # ============================================================================
+
 
 def connect_central_database() -> sqlite3.Connection:
     require(
@@ -288,13 +258,9 @@ def connect_central_database() -> sqlite3.Connection:
         f"Central database does not exist: {db_path}",
     )
 
-    info(
-        f"SQLite database: {db_path}"
-    )
+    info(f"SQLite database: {db_path}")
 
-    connection = sqlite3.connect(
-        db_path
-    )
+    connection = sqlite3.connect(db_path)
 
     connection.row_factory = sqlite3.Row
 
@@ -304,12 +270,10 @@ def connect_central_database() -> sqlite3.Connection:
 def database_evidence_count(
     connection: sqlite3.Connection,
 ) -> int:
-    row = connection.execute(
-        """
+    row = connection.execute("""
         SELECT COUNT(*) AS count
         FROM evidence
-        """
-    ).fetchone()
+        """).fetchone()
 
     return int(row["count"])
 
@@ -339,13 +303,9 @@ def verify_central_database(
     connection = connect_central_database()
 
     try:
-        total_count = database_evidence_count(
-            connection
-        )
+        total_count = database_evidence_count(connection)
 
-        print(
-            f"  SQLite evidence rows: {total_count}"
-        )
+        print(f"  SQLite evidence rows: {total_count}")
 
         if expected_total_count is not None:
             require(
@@ -361,23 +321,18 @@ def verify_central_database(
         # Duplicate primary-key detection.
         # ---------------------------------------------------------------
 
-        duplicate_rows = connection.execute(
-            """
+        duplicate_rows = connection.execute("""
             SELECT
                 evidence_id,
                 COUNT(*) AS count
             FROM evidence
             GROUP BY evidence_id
             HAVING COUNT(*) > 1
-            """
-        ).fetchall()
+            """).fetchall()
 
         require(
             not duplicate_rows,
-            (
-                "Duplicate evidence IDs detected in Central: "
-                f"{len(duplicate_rows)}"
-            ),
+            ("Duplicate evidence IDs detected in Central: " f"{len(duplicate_rows)}"),
         )
 
         # ---------------------------------------------------------------
@@ -415,70 +370,44 @@ def verify_central_database(
                 FROM evidence
                 WHERE evidence_id = ?
                 """,
-                (
-                    envelope.evidence_id,
-                ),
+                (envelope.evidence_id,),
             ).fetchone()
 
             if row is None:
-                missing.append(
-                    envelope.evidence_id
-                )
+                missing.append(envelope.evidence_id)
                 continue
 
-            raw_data = bytes(
-                row["raw_data"]
-            )
+            raw_data = bytes(row["raw_data"])
 
-            actual_sha256 = hashlib.sha256(
-                raw_data
-            ).hexdigest()
+            actual_sha256 = hashlib.sha256(raw_data).hexdigest()
 
             metadata_ok = (
-                row["sha256"]
-                == envelope.sha256
-                and row["size_bytes"]
-                == envelope.size_bytes
-                and row["tenant_id"]
-                == envelope.tenant_id
-                and row["instance_name"]
-                == envelope.instance_name
-                and row["project_id"]
-                == envelope.project_id
-                and row["scope"]
-                == envelope.scope
-                and row["source"]
-                == envelope.source
-                and row["source_path"]
-                == envelope.source_path
-                and row["acquisition_layer"]
-                == envelope.acquisition_layer
-                and row["acquired_from"]
-                == envelope.acquired_from
-                and row["attribution_method"]
-                == envelope.attribution_method
-                and row["sequence_start"]
-                == envelope.sequence_start
-                and row["sequence_end"]
-                == envelope.sequence_end
+                row["sha256"] == envelope.sha256
+                and row["size_bytes"] == envelope.size_bytes
+                and row["tenant_id"] == envelope.tenant_id
+                and row["instance_name"] == envelope.instance_name
+                and row["project_id"] == envelope.project_id
+                and row["scope"] == envelope.scope
+                and row["source"] == envelope.source
+                and row["source_path"] == envelope.source_path
+                and row["acquisition_layer"] == envelope.acquisition_layer
+                and row["acquired_from"] == envelope.acquired_from
+                and row["attribution_method"] == envelope.attribution_method
+                and row["sequence_start"] == envelope.sequence_start
+                and row["sequence_end"] == envelope.sequence_end
             )
 
             raw_integrity_ok = (
                 actual_sha256 == envelope.sha256
                 and actual_sha256 == row["sha256"]
-                and len(raw_data)
-                == row["size_bytes"]
+                and len(raw_data) == row["size_bytes"]
             )
 
             if not metadata_ok:
-                mismatched.append(
-                    envelope.evidence_id
-                )
+                mismatched.append(envelope.evidence_id)
 
             if not raw_integrity_ok:
-                integrity_failures.append(
-                    envelope.evidence_id
-                )
+                integrity_failures.append(envelope.evidence_id)
 
         require(
             not missing,
@@ -507,21 +436,13 @@ def verify_central_database(
             ),
         )
 
-        passed(
-            "Every spool evidence record exists in SQLite."
-        )
+        passed("Every spool evidence record exists in SQLite.")
 
-        passed(
-            "Every persisted raw BLOB has the expected size and SHA-256."
-        )
+        passed("Every persisted raw BLOB has the expected size and SHA-256.")
 
-        passed(
-            "Persisted provenance and sequence metadata match the spool."
-        )
+        passed("Persisted provenance and sequence metadata match the spool.")
 
-        passed(
-            "No duplicate evidence IDs exist."
-        )
+        passed("No duplicate evidence IDs exist.")
 
         return total_count
 
@@ -533,6 +454,7 @@ def verify_central_database(
 # Spool lifecycle inspection
 # ============================================================================
 
+
 def verify_spool_pending(
     spool: EvidenceSpool,
     spool_path: Path,
@@ -543,63 +465,41 @@ def verify_spool_pending(
 
     print()
     print("-" * 78)
-    print(
-        f"Spool lifecycle state: expected {state}"
-    )
+    print(f"Spool lifecycle state: expected {state}")
     print("-" * 78)
 
     pending = spool.pending()
 
-    print(
-        f"  pending entries: {len(pending)}"
-    )
+    print(f"  pending entries: {len(pending)}")
 
     for path in pending:
-        print(
-            f"    {path}"
-        )
+        print(f"    {path}")
 
     if expected:
         require(
             spool_path.exists(),
-            (
-                "Expected spool entry to remain on disk, "
-                "but it does not exist."
-            ),
+            ("Expected spool entry to remain on disk, " "but it does not exist."),
         )
 
         require(
             spool_path in pending,
-            (
-                "Expected spool entry to appear in "
-                "EvidenceSpool.pending()."
-            ),
+            ("Expected spool entry to appear in " "EvidenceSpool.pending()."),
         )
 
-        passed(
-            "Spool entry is retained and pending."
-        )
+        passed("Spool entry is retained and pending.")
 
     else:
         require(
             not spool_path.exists(),
-            (
-                "Spool entry should have been removed "
-                "after successful delivery."
-            ),
+            ("Spool entry should have been removed " "after successful delivery."),
         )
 
         require(
             spool_path not in pending,
-            (
-                "Removed spool entry still appears in "
-                "EvidenceSpool.pending()."
-            ),
+            ("Removed spool entry still appears in " "EvidenceSpool.pending()."),
         )
 
-        passed(
-            "Spool entry was removed and is no longer pending."
-        )
+        passed("Spool entry was removed and is no longer pending.")
 
 
 def verify_remove_directly(
@@ -624,45 +524,30 @@ def verify_remove_directly(
 
     require(
         spool_path.exists(),
-        (
-            "Cannot test EvidenceSpool.remove(): "
-            "spool file no longer exists."
-        ),
+        ("Cannot test EvidenceSpool.remove(): " "spool file no longer exists."),
     )
 
-    info(
-        f"Removing spool entry:\n  {spool_path}"
-    )
+    info(f"Removing spool entry:\n  {spool_path}")
 
-    spool.remove(
-        spool_path
-    )
+    spool.remove(spool_path)
 
     require(
         not spool_path.exists(),
-        (
-            "EvidenceSpool.remove() returned, "
-            "but the spool file still exists."
-        ),
+        ("EvidenceSpool.remove() returned, " "but the spool file still exists."),
     )
 
     require(
         spool_path not in spool.pending(),
-        (
-            "EvidenceSpool.remove() removed the file "
-            "but it remains in pending()."
-        ),
+        ("EvidenceSpool.remove() removed the file " "but it remains in pending()."),
     )
 
-    passed(
-        "EvidenceSpool.remove() successfully removed "
-        "the delivered spool entry."
-    )
+    passed("EvidenceSpool.remove() successfully removed " "the delivered spool entry.")
 
 
 # ============================================================================
 # Central target
 # ============================================================================
+
 
 def inspect_central_target() -> None:
     section(
@@ -670,31 +555,24 @@ def inspect_central_target() -> None:
         "Inspecting Central delivery configuration",
     )
 
-    print(
-        f"  Central URL: {CENTRAL_URL}"
-    )
+    print(f"  Central URL: {CENTRAL_URL}")
 
-    print(
-        f"  Endpoint:    {BATCH_ENDPOINT}"
-    )
+    print(f"  Endpoint:    {BATCH_ENDPOINT}")
 
-    print(
-        f"  TLS verify:  {TLS_VERIFY}"
-    )
+    print(f"  TLS verify:  {TLS_VERIFY}")
 
     require(
         API_KEY,
         "EVIDENCE_API_KEY is empty.",
     )
 
-    passed(
-        "Central delivery configuration is present."
-    )
+    passed("Central delivery configuration is present.")
 
 
 # ============================================================================
 # ACTUAL DELIVERY COMPONENT
 # ============================================================================
+
 
 def build_delivery_component(
     *,
@@ -757,6 +635,7 @@ def build_delivery_component(
 # Delivery lifecycle
 # ============================================================================
 
+
 def test_delivery_lifecycle(
     spool: EvidenceSpool,
     spool_path: Path,
@@ -781,21 +660,13 @@ def test_delivery_lifecycle(
     # The exact call depends on the current implementation.
     # ------------------------------------------------------------------
 
-    info(
-        "Attempting delivery through the actual "
-        "Central delivery component."
-    )
+    info("Attempting delivery through the actual " "Central delivery component.")
 
-    result = delivery.deliver(
-        spool_path
-    )
+    result = delivery.deliver(spool_path)
 
     require(
         result.success,
-        (
-            "Central delivery component reported failure: "
-            f"{result}"
-        ),
+        ("Central delivery component reported failure: " f"{result}"),
     )
 
     # Successful Central acknowledgement MUST precede spool removal.
@@ -805,14 +676,13 @@ def test_delivery_lifecycle(
         expected=False,
     )
 
-    passed(
-        "Successful Central delivery removed the spool entry."
-    )
+    passed("Successful Central delivery removed the spool entry.")
 
 
 # ============================================================================
 # Main
 # ============================================================================
+
 
 def main() -> None:
     print()
@@ -821,9 +691,7 @@ def main() -> None:
     print("=" * 78)
 
     print()
-    print(
-        "This test validates:"
-    )
+    print("This test validates:")
     print(
         "  spool"
         " ->"
@@ -844,34 +712,21 @@ def main() -> None:
 
     spool, spool_path = load_spool_file()
 
-    batch = spool.load(
-        spool_path
-    )
+    batch = spool.load(spool_path)
 
-    validate_batch(
-        batch
-    )
+    validate_batch(batch)
 
-    validate_all_evidence(
-        batch
-    )
+    validate_all_evidence(batch)
 
-    inspect_batch_metadata(
-        batch
-    )
+    inspect_batch_metadata(batch)
 
     # ------------------------------------------------------------------
     # 5. Direct SQLite verification.
     # ------------------------------------------------------------------
 
-    before_count = verify_central_database(
-        batch
-    )
+    before_count = verify_central_database(batch)
 
-    info(
-        f"SQLite row count before lifecycle test: "
-        f"{before_count}"
-    )
+    info(f"SQLite row count before lifecycle test: " f"{before_count}")
 
     # ------------------------------------------------------------------
     # 6. Confirm spool currently exists.
@@ -913,9 +768,7 @@ def main() -> None:
         "Verifying SQLite after successful delivery",
     )
 
-    after_count = verify_central_database(
-        batch
-    )
+    after_count = verify_central_database(batch)
 
     require(
         after_count == before_count,
@@ -927,9 +780,7 @@ def main() -> None:
         ),
     )
 
-    passed(
-        "Successful delivery did not create duplicate evidence."
-    )
+    passed("Successful delivery did not create duplicate evidence.")
 
     # ------------------------------------------------------------------
     # 10. Final result.
@@ -940,75 +791,33 @@ def main() -> None:
         "Final result",
     )
 
-    print(
-        "REAL SPOOL -> CENTRAL DELIVERY LIFECYCLE TEST PASSED"
-    )
+    print("REAL SPOOL -> CENTRAL DELIVERY LIFECYCLE TEST PASSED")
 
     print()
-    print(
-        "Validated:"
-    )
-    print(
-        "  [PASS] Existing real host-agent spool located"
-    )
-    print(
-        "  [PASS] EvidenceSpool.load()"
-    )
-    print(
-        "  [PASS] Base64 verification"
-    )
-    print(
-        "  [PASS] Size verification"
-    )
-    print(
-        "  [PASS] SHA-256 verification"
-    )
-    print(
-        "  [PASS] Batch metadata inspection"
-    )
-    print(
-        "  [PASS] Direct SQLite persistence"
-    )
-    print(
-        "  [PASS] SQLite raw-data integrity"
-    )
-    print(
-        "  [PASS] SQLite provenance verification"
-    )
-    print(
-        "  [PASS] Duplicate evidence detection"
-    )
-    print(
-        "  [PASS] Spool pending state"
-    )
-    print(
-        "  [PASS] Actual Central delivery component"
-    )
-    print(
-        "  [PASS] Successful delivery acknowledgement"
-    )
-    print(
-        "  [PASS] EvidenceSpool.remove() lifecycle"
-    )
-    print(
-        "  [PASS] Spool removed after successful delivery"
-    )
-    print(
-        "  [PASS] No duplicate SQLite evidence"
-    )
+    print("Validated:")
+    print("  [PASS] Existing real host-agent spool located")
+    print("  [PASS] EvidenceSpool.load()")
+    print("  [PASS] Base64 verification")
+    print("  [PASS] Size verification")
+    print("  [PASS] SHA-256 verification")
+    print("  [PASS] Batch metadata inspection")
+    print("  [PASS] Direct SQLite persistence")
+    print("  [PASS] SQLite raw-data integrity")
+    print("  [PASS] SQLite provenance verification")
+    print("  [PASS] Duplicate evidence detection")
+    print("  [PASS] Spool pending state")
+    print("  [PASS] Actual Central delivery component")
+    print("  [PASS] Successful delivery acknowledgement")
+    print("  [PASS] EvidenceSpool.remove() lifecycle")
+    print("  [PASS] Spool removed after successful delivery")
+    print("  [PASS] No duplicate SQLite evidence")
 
     print()
-    print(
-        f"Evidence in batch: {len(batch.evidence)}"
-    )
+    print(f"Evidence in batch: {len(batch.evidence)}")
 
-    print(
-        f"SQLite rows:        {after_count}"
-    )
+    print(f"SQLite rows:        {after_count}")
 
-    print(
-        f"Spool path:         {spool_path}"
-    )
+    print(f"Spool path:         {spool_path}")
 
 
 if __name__ == "__main__":

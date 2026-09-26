@@ -22,8 +22,7 @@ class AccessCollector:
     }
 
     LOG_PATTERN = re.compile(
-        rb'(\S+) - (\S+) \[(.*?)\] '
-        rb'"(\S+) (\S+) ([^"]+)" (\d+)'
+        rb"(\S+) - (\S+) \[(.*?)\] " rb'"(\S+) (\S+) ([^"]+)" (\d+)'
     )
 
     def __init__(
@@ -50,13 +49,9 @@ class AccessCollector:
 
         events = []
 
-        with self.path.open(
-            "rb"
-        ) as handle:
+        with self.path.open("rb") as handle:
 
-            handle.seek(
-                self.offset
-            )
+            handle.seek(self.offset)
 
             data = handle.read()
 
@@ -64,24 +59,16 @@ class AccessCollector:
 
         for line in data.splitlines():
 
-            match = self.LOG_PATTERN.search(
-                line
-            )
+            match = self.LOG_PATTERN.search(line)
 
             if not match:
                 continue
 
-            actor = match.group(1).decode(
-                errors="replace"
-            )
+            actor = match.group(1).decode(errors="replace")
 
-            method = match.group(4).decode(
-                errors="replace"
-            )
+            method = match.group(4).decode(errors="replace")
 
-            resource = match.group(5).decode(
-                errors="replace"
-            )
+            resource = match.group(5).decode(errors="replace")
 
             event_type = self.METHOD_EVENTS.get(
                 method,
@@ -102,20 +89,14 @@ class AccessCollector:
                 resource=resource,
                 details={
                     "method": method,
-                    "status": int(
-                        match.group(7)
-                    ),
-                    "raw_line": line.decode(
-                        errors="replace"
-                    ),
+                    "status": int(match.group(7)),
+                    "raw_line": line.decode(errors="replace"),
                 },
                 raw_data=line + b"\n",
             )
 
             events.append(event)
 
-            self.state.set_sequence(
-                event.sequence
-            )
+            self.state.set_sequence(event.sequence)
 
         return events

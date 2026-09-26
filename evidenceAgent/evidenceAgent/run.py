@@ -11,7 +11,6 @@ from .config import AgentConfig
 from .hostAgent import HostEvidenceAgent
 from .hostConfig import HostAgentConfig
 
-
 # ---------------------------------------------------------------------------
 # Logging
 # ---------------------------------------------------------------------------
@@ -44,6 +43,7 @@ def stop_agent(signum, frame):
 # Host-agent enablement
 # ---------------------------------------------------------------------------
 
+
 def host_enabled() -> bool:
     """
     Determine whether the host-level audit agent should run.
@@ -61,6 +61,7 @@ def host_enabled() -> bool:
         "yes",
         "on",
     }
+
 
 def instance_loop(
     agent: EvidenceAgent,
@@ -93,6 +94,7 @@ def instance_loop(
 
         if running:
             time.sleep(interval)
+
 
 def instance_enabled() -> bool:
     """
@@ -152,9 +154,7 @@ def host_loop(
                 evidence_count = len(result.batch.evidence)
 
                 if evidence_count == 0:
-                    logger.info(
-                        "[host] No new audit evidence"
-                    )
+                    logger.info("[host] No new audit evidence")
 
                 else:
                     logger.info(
@@ -175,13 +175,10 @@ def host_loop(
                     # 4. Commit checkpoint only after successful delivery.
                     # -------------------------------------------------------
 
-                    agent.collector.commit_checkpoint(
-                        result.checkpoint
-                    )
+                    agent.collector.commit_checkpoint(result.checkpoint)
 
                     logger.info(
-                        "[host] Delivered batch and committed "
-                        "audit checkpoint"
+                        "[host] Delivered batch and committed " "audit checkpoint"
                     )
 
         except Exception:
@@ -192,6 +189,7 @@ def host_loop(
 
         if running:
             time.sleep(interval)
+
 
 def build_host_agent(
     config: HostAgentConfig,
@@ -211,9 +209,7 @@ def build_host_agent(
     )
     from acquisition.collectors.hostExec import HostExecutor
 
-    checkpoint_store = CheckpointStore(
-        config.checkpoint_path
-    )
+    checkpoint_store = CheckpointStore(config.checkpoint_path)
 
     collector = AuditCollector(
         executor=HostExecutor(use_sudo=True),
@@ -231,6 +227,7 @@ def build_host_agent(
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
+
 
 def main():
     global running
@@ -411,22 +408,13 @@ def main():
     # -----------------------------------------------------------------------
 
     if instance_agent is not None and host_agent is not None:
-        logger.info(
-            "Evidence collection started: "
-            "instance + host audit"
-        )
+        logger.info("Evidence collection started: " "instance + host audit")
 
     elif instance_agent is not None:
-        logger.info(
-            "Evidence collection started: "
-            "instance agent only"
-        )
+        logger.info("Evidence collection started: " "instance agent only")
 
     else:
-        logger.info(
-            "Evidence collection started: "
-            "host audit agent only"
-        )
+        logger.info("Evidence collection started: " "host audit agent only")
 
     # -----------------------------------------------------------------------
     # Wait for workers to finish
@@ -441,6 +429,7 @@ def main():
     logger.info("==================================================")
     logger.info("Evidence Agent Stopped")
     logger.info("==================================================")
+
 
 # ---------------------------------------------------------------------------
 # Entry point

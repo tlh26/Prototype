@@ -16,8 +16,7 @@ def connection() -> Generator[sqlite3.Connection, None, None]:
     connection = sqlite3.connect(":memory:")
     connection.row_factory = sqlite3.Row
 
-    connection.execute(
-        """
+    connection.execute("""
         CREATE TABLE evidence_records (
             evidence_id TEXT PRIMARY KEY,
 
@@ -50,8 +49,7 @@ def connection() -> Generator[sqlite3.Connection, None, None]:
 
             record_sha256 TEXT
         )
-        """
-    )
+        """)
 
     yield connection
 
@@ -90,11 +88,7 @@ def make_evidence(
         source_path="/var/log/audit/audit.log",
         acquisition_layer="host",
         acquired_from="incus-host-01",
-        attribution_method=(
-            "incus_metadata"
-            if tenant_id
-            else "unattributed"
-        ),
+        attribution_method=("incus_metadata" if tenant_id else "unattributed"),
         collected_at=datetime.now(timezone.utc),
         raw_data=raw_data,
         sha256=sha256,
@@ -112,9 +106,7 @@ def test_save_and_get_evidence(
 
     repository.save(evidence)
 
-    result = repository.get(
-        evidence.evidence_id
-    )
+    result = repository.get(evidence.evidence_id)
 
     assert result is not None
 
@@ -132,21 +124,13 @@ def test_save_and_get_evidence(
 def test_saved_raw_bytes_are_identical(
     repository: GenericEvidenceRepository,
 ):
-    raw_data = (
-        b"\x00\x01\x02"
-        b" forensic evidence "
-        b"\xff\xfe"
-    )
+    raw_data = b"\x00\x01\x02" b" forensic evidence " b"\xff\xfe"
 
-    evidence = make_evidence(
-        raw_data=raw_data
-    )
+    evidence = make_evidence(raw_data=raw_data)
 
     repository.save(evidence)
 
-    result = repository.get(
-        evidence.evidence_id
-    )
+    result = repository.get(evidence.evidence_id)
 
     assert result is not None
     assert result["raw_data"] == raw_data
@@ -166,9 +150,7 @@ def test_sha256_is_verified_before_storage(
     with pytest.raises(ValueError):
         repository.save(invalid)
 
-    assert repository.get(
-        evidence.evidence_id
-    ) is None
+    assert repository.get(evidence.evidence_id) is None
 
 
 def test_size_is_verified_before_storage(
@@ -185,9 +167,7 @@ def test_size_is_verified_before_storage(
     with pytest.raises(ValueError):
         repository.save(invalid)
 
-    assert repository.get(
-        evidence.evidence_id
-    ) is None
+    assert repository.get(evidence.evidence_id) is None
 
 
 def test_duplicate_identical_evidence_is_idempotent(
@@ -198,9 +178,7 @@ def test_duplicate_identical_evidence_is_idempotent(
     repository.save(evidence)
     repository.save(evidence)
 
-    result = repository.get(
-        evidence.evidence_id
-    )
+    result = repository.get(evidence.evidence_id)
 
     assert result is not None
     assert result["sha256"] == evidence.sha256
@@ -244,9 +222,7 @@ def test_list_filters_by_tenant(
         )
     )
 
-    results = repository.list(
-        tenant_id="tenant-b"
-    )
+    results = repository.list(tenant_id="tenant-b")
 
     assert len(results) == 1
     assert results[0]["tenant_id"] == "tenant-b"
@@ -271,9 +247,7 @@ def test_list_filters_by_instance(
         )
     )
 
-    results = repository.list(
-        instance_name="web-b"
-    )
+    results = repository.list(instance_name="web-b")
 
     assert len(results) == 1
     assert results[0]["instance_name"] == "web-b"
@@ -290,9 +264,7 @@ def test_unattributed_host_evidence_can_be_stored(
 
     repository.save(evidence)
 
-    result = repository.get(
-        evidence.evidence_id
-    )
+    result = repository.get(evidence.evidence_id)
 
     assert result is not None
     assert result["tenant_id"] is None

@@ -1,4 +1,4 @@
-#tests/acquisition/test_evidence_capture_storage_integration.py
+# tests/acquisition/test_evidence_capture_storage_integration.py
 from pathlib import Path
 
 from acquisition.captureTarget import CaptureTarget
@@ -10,7 +10,6 @@ from acquisition.collectors.auditAttributor import IncusAuditAttributor
 from evidence.enums import CloudPlatform
 from evidence.tenant import TenantContext
 from storage.evidenceRepo import SQLiteEvidenceRepository
-
 
 AUDIT_LOG = "/var/log/audit/audit.log"
 
@@ -36,9 +35,7 @@ class MockHostExecutor:
         if command[0] == "stat":
             return SimpleNamespace(
                 returncode=0,
-                stdout=(
-                    f"10 20 {len(self.audit_data)}\n"
-                ).encode(),
+                stdout=(f"10 20 {len(self.audit_data)}\n").encode(),
                 stderr=b"",
             )
 
@@ -48,25 +45,17 @@ class MockHostExecutor:
 
             for argument in command:
                 if argument.startswith("skip="):
-                    skip = int(
-                        argument.split("=", 1)[1]
-                    )
+                    skip = int(argument.split("=", 1)[1])
                 elif argument.startswith("count="):
-                    count = int(
-                        argument.split("=", 1)[1]
-                    )
+                    count = int(argument.split("=", 1)[1])
 
             return SimpleNamespace(
                 returncode=0,
-                stdout=self.audit_data[
-                    skip:skip + count
-                ],
+                stdout=self.audit_data[skip : skip + count],
                 stderr=b"",
             )
 
-        raise AssertionError(
-            f"Unexpected host command: {command}"
-        )
+        raise AssertionError(f"Unexpected host command: {command}")
 
 
 def audit_record(
@@ -75,12 +64,7 @@ def audit_record(
 ) -> bytes:
     return (
         b"type=SYSCALL "
-        + (
-            f"msg=audit("
-            f"08/27/2026 19:35:34.612:"
-            f"{sequence}"
-            f"): "
-        ).encode()
+        + (f"msg=audit(" f"08/27/2026 19:35:34.612:" f"{sequence}" f"): ").encode()
         + f"subj={subject}\n".encode()
     )
 
@@ -111,9 +95,7 @@ def test_capture_persists_real_audit_evidence(
         )
     )
 
-    repository = SQLiteEvidenceRepository(
-        tmp_path / "evidence.db"
-    )
+    repository = SQLiteEvidenceRepository(tmp_path / "evidence.db")
 
     tenant = TenantContext(
         tenant_id="tenant-b",
@@ -128,13 +110,9 @@ def test_capture_persists_real_audit_evidence(
         instance_name="web-b",
     )
 
-    executor = MockHostExecutor(
-        audit_data
-    )
+    executor = MockHostExecutor(audit_data)
 
-    checkpoint_store = CheckpointStore(
-        tmp_path / "audit-checkpoint.json"
-    )
+    checkpoint_store = CheckpointStore(tmp_path / "audit-checkpoint.json")
 
     collector = AuditCollector(
         executor=executor,
@@ -145,9 +123,7 @@ def test_capture_persists_real_audit_evidence(
 
     registry = CollectorRegistry()
 
-    registry.register(
-        collector
-    )
+    registry.register(collector)
 
     service = EvidenceCaptureService(
         registry=registry,
@@ -182,9 +158,7 @@ def test_capture_persists_real_audit_evidence(
     assert evidence
 
     for stored in evidence:
-        assert stored.capture_id == (
-            manifest.capture_id
-        )
+        assert stored.capture_id == (manifest.capture_id)
 
         assert stored.tenant_id == "tenant-b"
         assert stored.project_id == "tenant-b"
@@ -192,9 +166,5 @@ def test_capture_persists_real_audit_evidence(
         assert stored.source == "auditd"
         assert stored.raw_data
         assert stored.sha256
-        assert stored.size_bytes == len(
-            stored.raw_data
-        )
-        assert repository.verify_evidence_integrity(
-            stored.evidence_id
-        )
+        assert stored.size_bytes == len(stored.raw_data)
+        assert repository.verify_evidence_integrity(stored.evidence_id)

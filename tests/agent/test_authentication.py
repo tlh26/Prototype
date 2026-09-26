@@ -49,13 +49,9 @@ def test_successful_login_is_collected(
     assert event.tenant_id == "tenant-b"
     assert event.instance_name == "web-b"
 
-    assert event.evidence_type == (
-        EvidenceType.AUTHENTICATION
-    )
+    assert event.evidence_type == (EvidenceType.AUTHENTICATION)
 
-    assert event.event_type == (
-        EventType.LOGIN_SUCCESS
-    )
+    assert event.event_type == (EventType.LOGIN_SUCCESS)
 
     assert event.actor == "appuser"
 
@@ -80,9 +76,7 @@ def test_failed_login_is_collected(
     events = collector.collect()
 
     assert len(events) == 1
-    assert events[0].event_type == (
-        EventType.LOGIN_FAILURE
-    )
+    assert events[0].event_type == (EventType.LOGIN_FAILURE)
 
 
 def test_session_opened_is_collected(
@@ -105,9 +99,7 @@ def test_session_opened_is_collected(
     events = collector.collect()
 
     assert len(events) == 1
-    assert events[0].event_type == (
-        EventType.SESSION_CREATED
-    )
+    assert events[0].event_type == (EventType.SESSION_CREATED)
 
 
 def test_session_closed_is_collected(
@@ -130,9 +122,7 @@ def test_session_closed_is_collected(
     events = collector.collect()
 
     assert len(events) == 1
-    assert events[0].event_type == (
-        EventType.SESSION_TERMINATED
-    )
+    assert events[0].event_type == (EventType.SESSION_TERMINATED)
 
 
 def test_incremental_collection(

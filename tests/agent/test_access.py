@@ -23,7 +23,7 @@ def test_get_maps_to_resource_read(
     state_dir,
 ):
     access_log.write_text(
-        '10.0.0.1 - - [31/Aug/2026:14:00:00 +0200] '
+        "10.0.0.1 - - [31/Aug/2026:14:00:00 +0200] "
         '"GET /api/users HTTP/1.1" 200 123\n',
         encoding="utf-8",
     )
@@ -51,7 +51,7 @@ def test_post_maps_to_resource_create(
     state_dir,
 ):
     access_log.write_text(
-        '10.0.0.1 - - [31/Aug/2026:14:00:00 +0200] '
+        "10.0.0.1 - - [31/Aug/2026:14:00:00 +0200] "
         '"POST /api/users HTTP/1.1" 201 50\n',
         encoding="utf-8",
     )
@@ -63,9 +63,7 @@ def test_post_maps_to_resource_create(
 
     events = collector.collect()
 
-    assert events[0].event_type == (
-        EventType.RESOURCE_CREATE
-    )
+    assert events[0].event_type == (EventType.RESOURCE_CREATE)
 
 
 def test_put_maps_to_resource_update(
@@ -73,7 +71,7 @@ def test_put_maps_to_resource_update(
     state_dir,
 ):
     access_log.write_text(
-        '10.0.0.1 - - [31/Aug/2026:14:00:00 +0200] '
+        "10.0.0.1 - - [31/Aug/2026:14:00:00 +0200] "
         '"PUT /api/users/42 HTTP/1.1" 200 50\n',
         encoding="utf-8",
     )
@@ -85,9 +83,7 @@ def test_put_maps_to_resource_update(
 
     events = collector.collect()
 
-    assert events[0].event_type == (
-        EventType.RESOURCE_UPDATE
-    )
+    assert events[0].event_type == (EventType.RESOURCE_UPDATE)
 
 
 def test_delete_maps_to_resource_delete(
@@ -95,7 +91,7 @@ def test_delete_maps_to_resource_delete(
     state_dir,
 ):
     access_log.write_text(
-        '10.0.0.1 - - [31/Aug/2026:14:00:00 +0200] '
+        "10.0.0.1 - - [31/Aug/2026:14:00:00 +0200] "
         '"DELETE /api/users/42 HTTP/1.1" 204 0\n',
         encoding="utf-8",
     )
@@ -107,9 +103,7 @@ def test_delete_maps_to_resource_delete(
 
     events = collector.collect()
 
-    assert events[0].event_type == (
-        EventType.RESOURCE_DELETE
-    )
+    assert events[0].event_type == (EventType.RESOURCE_DELETE)
 
 
 def test_multiple_access_events(
@@ -119,13 +113,10 @@ def test_multiple_access_events(
     access_log.write_text(
         "\n".join(
             [
-                '10.0.0.1 - - [31/Aug/2026:14:00:00 +0200] '
-                '"GET / HTTP/1.1" 200 100',
-
-                '10.0.0.2 - - [31/Aug/2026:14:00:01 +0200] '
+                "10.0.0.1 - - [31/Aug/2026:14:00:00 +0200] " '"GET / HTTP/1.1" 200 100',
+                "10.0.0.2 - - [31/Aug/2026:14:00:01 +0200] "
                 '"POST /users HTTP/1.1" 201 50',
-
-                '10.0.0.3 - - [31/Aug/2026:14:00:02 +0200] '
+                "10.0.0.3 - - [31/Aug/2026:14:00:02 +0200] "
                 '"DELETE /users/1 HTTP/1.1" 204 0',
             ]
         )
@@ -156,8 +147,7 @@ def test_incremental_access_collection(
     )
 
     access_log.write_text(
-        '10.0.0.1 - - [31/Aug/2026:14:00:00 +0200] '
-        '"GET /first HTTP/1.1" 200 10\n',
+        "10.0.0.1 - - [31/Aug/2026:14:00:00 +0200] " '"GET /first HTTP/1.1" 200 10\n',
         encoding="utf-8",
     )
 
@@ -166,8 +156,7 @@ def test_incremental_access_collection(
     assert len(first) == 1
 
     access_log.open("a", encoding="utf-8").write(
-        '10.0.0.1 - - [31/Aug/2026:14:00:01 +0200] '
-        '"GET /second HTTP/1.1" 200 10\n'
+        "10.0.0.1 - - [31/Aug/2026:14:00:01 +0200] " '"GET /second HTTP/1.1" 200 10\n'
     )
 
     second = collector.collect()

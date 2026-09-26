@@ -32,33 +32,18 @@ def test_capture_service_captures_audit_evidence():
 
     evidence = AuditEvidence(
         evidence_id="evidence-001",
-
         tenant_id="tenant-b",
         tenant_hash="tenant-hash-b",
-
         project_id="tenant-b",
-
         instance_name="web-b",
-
         source="auditd",
         source_path="/var/log/audit/audit.log",
-
         collected_at=(
-            __import__(
-                "datetime"
-            ).datetime.now(
-                __import__(
-                    "datetime"
-                ).timezone.utc
-            )
+            __import__("datetime").datetime.now(__import__("datetime").timezone.utc)
         ),
-
         raw_data=b"audit evidence",
-
         sha256="a" * 64,
-
         size_bytes=14,
-
         sequence_start=933,
         sequence_end=933,
     )
@@ -67,9 +52,7 @@ def test_capture_service_captures_audit_evidence():
 
     registry = CollectorRegistry()
 
-    registry.register(
-        collector
-    )
+    registry.register(collector)
 
     repository = Mock()
 
@@ -87,10 +70,7 @@ def test_capture_service_captures_audit_evidence():
 
     assert manifest.evidence_count == 1
 
-    assert (
-        manifest.sources[0].evidence_id
-        == "evidence-001"
-    )
+    assert manifest.sources[0].evidence_id == "evidence-001"
 
     collector.collect.assert_called_once_with(
         tenant=tenant,
@@ -100,8 +80,9 @@ def test_capture_service_captures_audit_evidence():
     repository.save_audit.assert_called_once()
     repository.save_manifest.assert_called_once()
 
+
 def test_capture_service_records_source_failure():
-    
+
     tenant = Mock()
 
     tenant.tenant_id = "tenant-b"
@@ -117,15 +98,11 @@ def test_capture_service_records_source_failure():
 
     collector.source = "auditd"
 
-    collector.collect.side_effect = RuntimeError(
-        "audit log unavailable"
-    )
+    collector.collect.side_effect = RuntimeError("audit log unavailable")
 
     registry = CollectorRegistry()
 
-    registry.register(
-        collector
-    )
+    registry.register(collector)
 
     repository = Mock()
 
@@ -143,9 +120,6 @@ def test_capture_service_records_source_failure():
 
     assert manifest.evidence_count == 0
 
-    assert (
-        manifest.sources[0].error
-        == "audit log unavailable"
-    )
+    assert manifest.sources[0].error == "audit log unavailable"
 
     repository.save_manifest.assert_called_once()

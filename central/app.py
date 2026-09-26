@@ -18,7 +18,6 @@ from central.genericRepo import GenericEvidenceRepository
 from central.ingest import IngestionError, ingest_batch
 from evidenceAgent.evidenceAgent.transportModels import EvidenceBatch
 
-
 config = CentralConfig()
 
 initialise_database(config)
@@ -59,9 +58,7 @@ def submit_event(
             detail="Invalid raw_data encoding",
         ) from exc
 
-    calculated_hash = hashlib.sha256(
-        raw_data
-    ).hexdigest()
+    calculated_hash = hashlib.sha256(raw_data).hexdigest()
 
     if calculated_hash != request.sha256:
         raise HTTPException(
@@ -72,13 +69,9 @@ def submit_event(
     connection = get_connection(config)
 
     try:
-        repository = EvidenceRepository(
-            connection
-        )
+        repository = EvidenceRepository(connection)
 
-        existing = repository.get(
-            request.event_id
-        )
+        existing = repository.get(request.event_id)
 
         if existing:
             return {
@@ -167,9 +160,7 @@ def list_events(
     connection = get_connection(config)
 
     try:
-        repository = EvidenceRepository(
-            connection
-        )
+        repository = EvidenceRepository(connection)
 
         rows = repository.list(
             tenant_id=tenant_id,
@@ -198,13 +189,9 @@ def get_event(
     connection = get_connection(config)
 
     try:
-        repository = EvidenceRepository(
-            connection
-        )
+        repository = EvidenceRepository(connection)
 
-        row = repository.get(
-            event_id
-        )
+        row = repository.get(event_id)
 
         if not row:
             raise HTTPException(
@@ -214,9 +201,7 @@ def get_event(
 
         event = dict(row)
 
-        event["raw_data"] = base64.b64encode(
-            bytes(event["raw_data"])
-        ).decode("ascii")
+        event["raw_data"] = base64.b64encode(bytes(event["raw_data"])).decode("ascii")
 
         return event
 
@@ -237,9 +222,7 @@ def submit_batch(
     connection = get_connection(config)
 
     try:
-        repository = GenericEvidenceRepository(
-            connection
-        )
+        repository = GenericEvidenceRepository(connection)
 
         try:
             stored = ingest_batch(

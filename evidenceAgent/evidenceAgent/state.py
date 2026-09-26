@@ -21,9 +21,7 @@ class AgentState:
         self._lock = Lock()
 
         if not self.path.exists():
-            self._write({
-                "sequence": 0
-            })
+            self._write({"sequence": 0})
 
     def _read(self) -> dict:
 
@@ -36,9 +34,7 @@ class AgentState:
 
     def _write(self, state: dict) -> None:
 
-        temporary = self.path.with_suffix(
-            ".tmp"
-        )
+        temporary = self.path.with_suffix(".tmp")
 
         with temporary.open(
             "w",
@@ -51,16 +47,12 @@ class AgentState:
                 indent=2,
             )
 
-        temporary.replace(
-            self.path
-        )
+        temporary.replace(self.path)
 
     def get_sequence(self) -> int:
 
         with self._lock:
-            return int(
-                self._read()["sequence"]
-            )
+            return int(self._read()["sequence"])
 
     def set_sequence(
         self,
@@ -69,15 +61,9 @@ class AgentState:
 
         with self._lock:
 
-            current = int(
-                self._read()["sequence"]
-            )
+            current = int(self._read()["sequence"])
 
             if sequence < current:
-                raise ValueError(
-                    "Agent sequence cannot move backwards"
-                )
+                raise ValueError("Agent sequence cannot move backwards")
 
-            self._write({
-                "sequence": sequence
-            })
+            self._write({"sequence": sequence})

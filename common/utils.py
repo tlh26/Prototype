@@ -34,6 +34,7 @@ def ensure_directory(path: str | Path):
 
     Path(path).mkdir(parents=True, exist_ok=True)
 
+
 def canonical_tenant_identity(
     platform: str | Enum,
     platform_project_id: str,
@@ -45,16 +46,9 @@ def canonical_tenant_identity(
         incus:government-a
     """
 
-    platform_value = (
-        platform.value
-        if isinstance(platform, Enum)
-        else platform
-    )
+    platform_value = platform.value if isinstance(platform, Enum) else platform
 
-    return (
-        f"{platform_value.strip().lower()}:"
-        f"{platform_project_id.strip()}"
-    )
+    return f"{platform_value.strip().lower()}:" f"{platform_project_id.strip()}"
 
 
 def deterministic_tenant_id(

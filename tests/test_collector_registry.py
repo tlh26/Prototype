@@ -15,13 +15,9 @@ def test_register_and_get_collector():
 
     registry = CollectorRegistry()
 
-    registry.register(
-        collector
-    )
+    registry.register(collector)
 
-    assert registry.get(
-        "auditd"
-    ) is collector
+    assert registry.get("auditd") is collector
 
 
 def test_duplicate_collector_rejected():

@@ -39,28 +39,18 @@ class AuditParser:
         self,
         line: str,
     ) -> AuditRecord | None:
-        match = _AUDIT_HEADER.search(
-            line
-        )
+        match = _AUDIT_HEADER.search(line)
 
         if not match:
             return None
 
-        record_type = match.group(
-            "type"
-        )
+        record_type = match.group("type")
 
-        timestamp = match.group(
-            "timestamp"
-        )
+        timestamp = match.group("timestamp")
 
-        sequence = int(
-            match.group("sequence")
-        )
+        sequence = int(match.group("sequence"))
 
-        fields = self._parse_fields(
-            line
-        )
+        fields = self._parse_fields(line)
 
         return AuditRecord(
             record_type=record_type,
@@ -95,8 +85,6 @@ class AuditParser:
         grouped = defaultdict(list)
 
         for record in records:
-            grouped[
-                record.sequence
-            ].append(record)
+            grouped[record.sequence].append(record)
 
         return dict(grouped)

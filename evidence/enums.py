@@ -8,10 +8,10 @@ platform-specific Incus resources.
 
 from enum import Enum
 
-
 # ============================================================
 # Evidence Sources
 # ============================================================
+
 
 class EvidenceSource(str, Enum):
     """
@@ -41,6 +41,7 @@ class EvidenceSource(str, Enum):
 # ============================================================
 # Event Types
 # ============================================================
+
 
 class EventType(str, Enum):
     """
@@ -146,10 +147,12 @@ class EventType(str, Enum):
 # Resource Types
 # ============================================================
 
+
 class ResourceType(str, Enum):
     """
     Resources that may appear in forensic evidence.
     """
+
     TENANT = "project"
 
     INSTANCE = "instance"
@@ -211,6 +214,7 @@ class ResourceType(str, Enum):
 # Evidence Categories
 # ============================================================
 
+
 class EvidenceCategory(str, Enum):
     """
     High-level categories used for evidence classification
@@ -245,6 +249,7 @@ class EvidenceCategory(str, Enum):
 # Evidence Lifecycle Status
 # ============================================================
 
+
 class EvidenceStatus(str, Enum):
     """
     Processing state of an evidence record.
@@ -271,6 +276,7 @@ class EvidenceStatus(str, Enum):
 # Hash Algorithms
 # ============================================================
 
+
 class HashAlgorithm(str, Enum):
     """
     Cryptographic algorithms supported by the integrity layer.
@@ -284,6 +290,7 @@ class HashAlgorithm(str, Enum):
 # ============================================================
 # Chain of Custody Actions
 # ============================================================
+
 
 class CustodyAction(str, Enum):
     """
@@ -318,6 +325,7 @@ class CustodyAction(str, Enum):
 # ============================================================
 # Relationship Types
 # ============================================================
+
 
 class RelationshipType(str, Enum):
     """
@@ -360,6 +368,7 @@ class RelationshipType(str, Enum):
 # Confidence Levels
 # ============================================================
 
+
 class ConfidenceLevel(str, Enum):
     """
     Confidence assigned to an inferred relationship or finding.
@@ -377,6 +386,7 @@ class ConfidenceLevel(str, Enum):
 # ============================================================
 # Severity
 # ============================================================
+
 
 class Severity(str, Enum):
     """
@@ -398,6 +408,7 @@ class Severity(str, Enum):
 # Parser Status
 # ============================================================
 
+
 class ParserStatus(str, Enum):
     """
     Result of parsing an evidence source.
@@ -414,6 +425,7 @@ class ParserStatus(str, Enum):
 # Investigation Status
 # ============================================================
 
+
 class InvestigationStatus(str, Enum):
     """
     Investigation lifecycle.
@@ -426,7 +438,7 @@ class InvestigationStatus(str, Enum):
     CLOSED = "closed"
 
     ARCHIVED = "archived"
-    
+
 
 class CloudPlatform(str, Enum):
     INCUS = "incus"
