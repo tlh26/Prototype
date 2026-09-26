@@ -1,12 +1,17 @@
 annotated-doc==0.0.5
 annotated-types==0.8.0
 anyio==4.14.2
+asgiref==3.12.1
 ast_serialize==0.6.0
 black==26.5.1
+build==1.6.0
 certifi==2026.7.22
 charset-normalizer==3.5.0
 click==8.4.2
 coverage==7.15.2
+Django==6.1.1
+-e git+https://github.com/tlh26/Prototype.git@0fc83204e2b8f44105d64814a536affd3f69601f#egg=evidence_agent&subdirectory=evidenceAgent
+-e git+https://github.com/tlh26/Prototype.git@0fc83204e2b8f44105d64814a536affd3f69601f#egg=evidenceAgent&subdirectory=evidenceAgent
 fastapi==0.141.1
 h11==0.16.0
 httpcore2==2.12.0
@@ -22,9 +27,11 @@ packaging==26.2
 pathspec==1.1.1
 platformdirs==4.11.0
 pluggy==1.6.0
+psycopg==3.3.6
 pydantic==2.13.4
 pydantic_core==2.46.4
 Pygments==2.20.0
+pyproject_hooks==1.2.0
 pytest==9.1.1
 pytest-cov==7.1.0
 python-dotenv==1.2.2
@@ -32,6 +39,7 @@ pytokens==0.4.1
 requests==2.34.2
 rich==15.0.0
 ruff==0.16.0
+sqlparse==0.6.0
 starlette==1.6.0
 structlog==26.1.0
 truststore==0.10.4
