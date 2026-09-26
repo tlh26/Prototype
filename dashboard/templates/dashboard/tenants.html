@@ -1,3 +1,35 @@
+{% extends "dashboard/base.html" %}
+
+{% block title %}
+Tenants · Evidence Correlation Platform
+{% endblock %}
+
+{% block topbar_title %}
+Tenants
+{% endblock %}
+
+{% block content %}
+
+<div class="page-header">
+    <div class="page-header-main">
+
+        <div class="breadcrumbs">
+            <span class="breadcrumb-current">
+                Tenants
+            </span>
+        </div>
+
+        <h1 class="page-title">
+            Tenants
+        </h1>
+
+        <p class="page-description">
+            Logical tenant boundaries represented in the central evidence store.
+        </p>
+
+    </div>
+</div>
+
 <!DOCTYPE html>
 <html lang="en">
 
@@ -84,3 +116,5 @@
 </body>
 
 </html>
+
+{% endblock %}

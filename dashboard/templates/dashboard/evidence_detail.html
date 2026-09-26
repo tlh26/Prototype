@@ -1,3 +1,42 @@
+{% extends "dashboard/base.html" %}
+
+{% block title %}
+Evidence Detail · Evidence Correlation Platform
+{% endblock %}
+
+{% block topbar_title %}
+Evidence Detail
+{% endblock %}
+
+{% block content %}
+
+<div class="page-header">
+    <div class="page-header-main">
+
+        <div class="breadcrumbs">
+            <a href="{% url 'dashboard:evidence' %}">
+                Evidence
+            </a>
+
+            <span class="breadcrumb-separator">
+                /
+            </span>
+
+            <span class="breadcrumb-current">
+                Detail
+            </span>
+        </div>
+
+        <h1 class="page-title">
+            Evidence Detail
+        </h1>
+
+        <p class="page-description">
+            Evidence record, provenance, and integrity information.
+        </p>
+
+    </div>
+</div>
 <!DOCTYPE html>
 <html lang="en">
 
@@ -221,3 +260,4 @@
 </body>
 
 </html>
+{% endblock %}

@@ -1,0 +1,251 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1"
+    >
+
+    <title>
+        {% block title %}
+            Evidence Correlation Platform
+        {% endblock %}
+    </title>
+
+    <link
+        rel="stylesheet"
+        href="{% static 'dashboard/css/dashboard.css' %}"
+    >
+
+    {% block extra_css %}{% endblock %}
+</head>
+
+<body>
+
+<div class="app-shell">
+
+    <!-- ======================================================
+         Sidebar
+         ====================================================== -->
+
+    <aside class="sidebar">
+
+        <div class="sidebar-brand">
+
+            <div class="sidebar-brand-mark">
+                EC
+            </div>
+
+            <div class="sidebar-brand-text">
+                <p class="sidebar-brand-title">
+                    Evidence Correlation
+                </p>
+
+                <p class="sidebar-brand-subtitle">
+                    Research Platform
+                </p>
+            </div>
+
+        </div>
+
+
+        <nav class="sidebar-nav">
+
+            <div class="sidebar-section">
+
+                <div class="sidebar-section-label">
+                    Investigation
+                </div>
+
+                <ul class="sidebar-nav-list">
+
+                    <li class="sidebar-nav-item">
+                        <a
+                            href="{% url 'dashboard:index' %}"
+                            class="sidebar-nav-link {% if request.resolver_match.url_name == 'index' %}active{% endif %}"
+                        >
+                            <span class="sidebar-nav-icon">
+                                ◉
+                            </span>
+
+                            <span class="sidebar-nav-label">
+                                Overview
+                            </span>
+                        </a>
+                    </li>
+
+
+                    <li class="sidebar-nav-item">
+                        <a
+                            href="{% url 'dashboard:tenants' %}"
+                            class="sidebar-nav-link {% if request.resolver_match.url_name == 'tenants' %}active{% endif %}"
+                        >
+                            <span class="sidebar-nav-icon">
+                                ▦
+                            </span>
+
+                            <span class="sidebar-nav-label">
+                                Tenants
+                            </span>
+                        </a>
+                    </li>
+
+
+                    <li class="sidebar-nav-item">
+                        <a
+                            href="{% url 'dashboard:evidence' %}"
+                            class="sidebar-nav-link {% if request.resolver_match.url_name == 'evidence' or request.resolver_match.url_name == 'evidence_detail' %}active{% endif %}"
+                        >
+                            <span class="sidebar-nav-icon">
+                                ◫
+                            </span>
+
+                            <span class="sidebar-nav-label">
+                                Evidence
+                            </span>
+                        </a>
+                    </li>
+
+
+                    <li class="sidebar-nav-item">
+                        <a
+                            href="{% url 'dashboard:timeline' %}"
+                            class="sidebar-nav-link {% if request.resolver_match.url_name == 'timeline' %}active{% endif %}"
+                        >
+                            <span class="sidebar-nav-icon">
+                                ─
+                            </span>
+
+                            <span class="sidebar-nav-label">
+                                Timeline
+                            </span>
+                        </a>
+                    </li>
+
+
+                    <li class="sidebar-nav-item">
+                        <a
+                            href="{% url 'dashboard:correlations' %}"
+                            class="sidebar-nav-link {% if request.resolver_match.url_name == 'correlations' %}active{% endif %}"
+                        >
+                            <span class="sidebar-nav-icon">
+                                ⤢
+                            </span>
+
+                            <span class="sidebar-nav-label">
+                                Correlations
+                            </span>
+                        </a>
+                    </li>
+
+                </ul>
+
+            </div>
+
+
+            <div class="sidebar-section">
+
+                <div class="sidebar-section-label">
+                    Platform
+                </div>
+
+                <ul class="sidebar-nav-list">
+
+                    <li class="sidebar-nav-item">
+                        <span class="sidebar-nav-link">
+                            <span class="sidebar-nav-icon">
+                                ●
+                            </span>
+
+                            <span class="sidebar-nav-label">
+                                Central Store
+                            </span>
+
+                            <span class="badge badge-success">
+                                OK
+                            </span>
+                        </span>
+                    </li>
+
+                </ul>
+
+            </div>
+
+        </nav>
+
+
+        <div class="sidebar-footer">
+
+            <p class="sidebar-footer-title">
+                Evidence Correlation Platform
+            </p>
+
+            <p class="sidebar-footer-text">
+                Research Prototype
+            </p>
+
+        </div>
+
+    </aside>
+
+
+    <!-- ======================================================
+         Main area
+         ====================================================== -->
+
+    <div class="main-area">
+
+        <!-- Topbar -->
+
+        <header class="topbar">
+
+            <div class="topbar-left">
+
+                <span class="topbar-page-label">
+                    {% block topbar_title %}
+                        Evidence Correlation Dashboard
+                    {% endblock %}
+                </span>
+
+            </div>
+
+
+            <div class="topbar-right">
+
+                <span class="system-status">
+                    <span class="system-status-dot"></span>
+                    Central Store
+                </span>
+
+            </div>
+
+        </header>
+
+
+        <!-- Page content -->
+
+        <main class="page-content">
+
+            {% block breadcrumbs %}
+            {% endblock %}
+
+
+            {% block content %}
+            {% endblock %}
+
+        </main>
+
+    </div>
+
+</div>
+
+
+{% block extra_js %}
+{% endblock %}
+
+</body>
+</html>
