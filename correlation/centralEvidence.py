@@ -4,31 +4,101 @@ from __future__ import annotations
 
 import base64
 import json
+import os
 from datetime import datetime
 from types import SimpleNamespace
 from typing import Any
 
+import psycopg
+
 from central.config import CentralConfig
 from central.database import get_connection
+from correlation.lastKnownEvidence import LastKnownEvidenceStore
+
+
+class CentralEvidenceUnavailable(Exception):
+    """Raised when the central evidence store cannot be reached."""
 
 
 class PostgreSQLCorrelationSource:
     """
     Read authoritative evidence from the Central PostgreSQL database.
 
-    This source is read-only. It adapts PostgreSQL rows from
-    evidence_events and evidence_records into objects consumed by
-    EvidenceNormaliser.
+    PostgreSQL remains the authoritative source.
 
-    It does not modify Central evidence and does not persist
-    correlation results.
+    When PostgreSQL is unavailable, previously retrieved evidence may be
+    served from the local last-known evidence store. Callers can inspect
+    ``using_last_known_data`` to distinguish live data from stale data.
+
+    The local store is a read-side resilience mechanism only. It never
+    writes to Central PostgreSQL and never changes authoritative evidence.
     """
 
     def __init__(
         self,
         config: CentralConfig | None = None,
+        last_known_store: LastKnownEvidenceStore | None = None,
     ) -> None:
         self.config = config or CentralConfig()
+
+        self.last_known_store = (
+            last_known_store
+            if last_known_store is not None
+            else LastKnownEvidenceStore()
+        )
+
+        self._using_last_known_data = False
+        self._central_available = True
+
+    # ------------------------------------------------------------------
+    # Request state
+    # ------------------------------------------------------------------
+
+    def begin_read(self) -> None:
+        """
+        Reset request-level availability state.
+
+        Views should call this once before invoking a service that may
+        perform multiple source reads.
+        """
+        self._using_last_known_data = False
+        self._central_available = True
+
+    @property
+    def using_last_known_data(self) -> bool:
+        return self._using_last_known_data
+
+    @property
+    def central_available(self) -> bool:
+        return self._central_available
+
+    @property
+    def last_known_timestamp(self) -> datetime | None:
+        return self.last_known_store.last_successful_read
+
+    # ------------------------------------------------------------------
+    # Central connection handling
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _is_connection_error(exc: Exception) -> bool:
+        return isinstance(
+            exc,
+            (
+                psycopg.OperationalError,
+                psycopg.InterfaceError,
+            ),
+        )
+
+    def _mark_live(self) -> None:
+        self._central_available = True
+
+    def _mark_cached(self) -> None:
+        self._central_available = False
+        self._using_last_known_data = True
+
+    def _mark_unavailable(self) -> None:
+        self._central_available = False
 
     # ------------------------------------------------------------------
     # Instance evidence
@@ -89,50 +159,117 @@ class PostgreSQLCorrelationSource:
 
         parameters.append(limit)
 
-        with get_connection(self.config) as connection:
-            rows = connection.execute(
-                query,
-                parameters,
-            ).fetchall()
+        try:
+            with get_connection(self.config) as connection:
+                rows = connection.execute(
+                    query,
+                    parameters,
+                ).fetchall()
 
-        return tuple(self._event_from_row(row) for row in rows)
+        except Exception as exc:
+            if not self._is_connection_error(exc):
+                raise
+
+            cached = self.last_known_store.get_events(
+                tenant_id=tenant_id,
+                instance_name=instance_name,
+                limit=limit,
+            )
+
+            if not cached:
+                self._mark_unavailable()
+
+                raise CentralEvidenceUnavailable(
+                    "The central evidence store is currently unavailable "
+                    "and no cached evidence is available."
+                ) from exc
+
+            self._mark_cached()
+
+            return tuple(
+                self._event_from_cache_payload(payload)
+                for payload in cached
+            )
+
+        events = tuple(
+            self._event_from_row(row)
+            for row in rows
+        )
+
+        self.last_known_store.save_events(events)
+
+        self._mark_live()
+
+        return events
 
     def fetch_event(
         self,
         event_id: str,
     ) -> Any | None:
 
-        with get_connection(self.config) as connection:
-            row = connection.execute(
-                """
-                SELECT
-                    event_id,
-                    tenant_id,
-                    instance_name,
-                    evidence_type,
-                    event_type,
-                    timestamp,
-                    actor,
-                    uid,
-                    resource,
-                    source,
-                    source_path,
-                    details_json,
-                    sequence,
-                    agent_id,
-                    raw_data,
-                    sha256,
-                    created_at
-                FROM evidence_events
-                WHERE event_id = %s
-                """,
-                (event_id,),
-            ).fetchone()
+        try:
+            with get_connection(self.config) as connection:
+                row = connection.execute(
+                    """
+                    SELECT
+                        event_id,
+                        tenant_id,
+                        instance_name,
+                        evidence_type,
+                        event_type,
+                        timestamp,
+                        actor,
+                        uid,
+                        resource,
+                        source,
+                        source_path,
+                        details_json,
+                        sequence,
+                        agent_id,
+                        raw_data,
+                        sha256,
+                        created_at
+                    FROM evidence_events
+                    WHERE event_id = %s
+                    """,
+                    (event_id,),
+                ).fetchone()
+
+        except Exception as exc:
+            if not self._is_connection_error(exc):
+                raise
+
+            cached = self.last_known_store.get_event(
+                event_id,
+            )
+
+            if cached is None:
+                self._mark_unavailable()
+
+                raise CentralEvidenceUnavailable(
+                    "The central evidence store is currently unavailable "
+                    "and the requested evidence is not present in the "
+                    "last-known cache."
+                ) from exc
+
+            self._mark_cached()
+
+            return self._event_from_cache_payload(
+                cached,
+            )
+
+        self._mark_live()
 
         if row is None:
             return None
 
-        return self._event_from_row(row)
+        event = self._event_from_row(row)
+
+        self.last_known_store.save_events(
+            (event,),
+        )
+
+        return event
 
     # ------------------------------------------------------------------
     # Host evidence
@@ -195,52 +332,170 @@ class PostgreSQLCorrelationSource:
 
         parameters.append(limit)
 
-        with get_connection(self.config) as connection:
-            rows = connection.execute(
-                query,
-                parameters,
-            ).fetchall()
+        try:
+            with get_connection(self.config) as connection:
+                rows = connection.execute(
+                    query,
+                    parameters,
+                ).fetchall()
 
-        return tuple(self._record_from_row(row) for row in rows)
+        except Exception as exc:
+            if not self._is_connection_error(exc):
+                raise
+
+            cached = self.last_known_store.get_records(
+                tenant_id=tenant_id,
+                instance_name=instance_name,
+                limit=limit,
+            )
+
+            if not cached:
+                self._mark_unavailable()
+
+                raise CentralEvidenceUnavailable(
+                    "The central evidence store is currently unavailable "
+                    "and no cached evidence records are available."
+                ) from exc
+
+            self._mark_cached()
+
+            return tuple(
+                self._record_from_cache_payload(payload)
+                for payload in cached
+            )
+
+        records = tuple(
+            self._record_from_row(row)
+            for row in rows
+        )
+
+        self.last_known_store.save_records(records)
+
+        self._mark_live()
+
+        return records
 
     def fetch_record(
         self,
         evidence_id: str,
     ) -> Any | None:
 
-        with get_connection(self.config) as connection:
-            row = connection.execute(
-                """
-                SELECT
-                    evidence_id,
-                    tenant_id,
-                    tenant_hash,
-                    project_id,
-                    instance_name,
-                    scope,
-                    source,
-                    source_path,
-                    acquisition_layer,
-                    acquired_from,
-                    attribution_method,
-                    collected_at,
-                    raw_data,
-                    sha256,
-                    size_bytes,
-                    sequence_start,
-                    sequence_end,
-                    capture_id,
-                    record_sha256
-                FROM evidence_records
-                WHERE evidence_id = %s
-                """,
-                (evidence_id,),
-            ).fetchone()
+        try:
+            with get_connection(self.config) as connection:
+                row = connection.execute(
+                    """
+                    SELECT
+                        evidence_id,
+                        tenant_id,
+                        tenant_hash,
+                        project_id,
+                        instance_name,
+                        scope,
+                        source,
+                        source_path,
+                        acquisition_layer,
+                        acquired_from,
+                        attribution_method,
+                        collected_at,
+                        raw_data,
+                        sha256,
+                        size_bytes,
+                        sequence_start,
+                        sequence_end,
+                        capture_id,
+                        record_sha256
+                    FROM evidence_records
+                    WHERE evidence_id = %s
+                    """,
+                    (evidence_id,),
+                ).fetchone()
+
+        except Exception as exc:
+            if not self._is_connection_error(exc):
+                raise
+
+            cached = self.last_known_store.get_record(
+                evidence_id,
+            )
+
+            if cached is None:
+                self._mark_unavailable()
+
+                raise CentralEvidenceUnavailable(
+                    "The central evidence store is currently unavailable "
+                    "and the requested evidence record is not present in "
+                    "the last-known cache."
+                ) from exc
+
+            self._mark_cached()
+
+            return self._record_from_cache_payload(
+                cached,
+            )
+
+        self._mark_live()
 
         if row is None:
             return None
 
-        return self._record_from_row(row)
+        record = self._record_from_row(row)
+
+        self.last_known_store.save_records(
+            (record,),
+        )
+
+        return record
+
+    # ------------------------------------------------------------------
+    # Tenants
+    # ------------------------------------------------------------------
+
+    def fetch_tenants(self) -> tuple[str, ...]:
+        query = """
+            SELECT DISTINCT tenant_id
+            FROM (
+                SELECT tenant_id
+                FROM evidence_events
+
+                UNION
+
+                SELECT tenant_id
+                FROM evidence_records
+            ) AS tenants
+            WHERE tenant_id IS NOT NULL
+            ORDER BY tenant_id
+        """
+
+        try:
+            with get_connection(self.config) as connection:
+                rows = connection.execute(
+                    query,
+                ).fetchall()
+
+        except Exception as exc:
+            if not self._is_connection_error(exc):
+                raise
+
+            cached = self.last_known_store.get_tenants()
+
+            if not cached:
+                self._mark_unavailable()
+
+                raise CentralEvidenceUnavailable(
+                    "The central evidence store is currently unavailable "
+                    "and no cached tenant information is available."
+                ) from exc
+
+            self._mark_cached()
+
+            return cached
+
+        self._mark_live()
+
+        return tuple(
+            row["tenant_id"]
+            for row in rows
+        )
 
     # ------------------------------------------------------------------
     # Row adapters
@@ -251,7 +506,12 @@ class PostgreSQLCorrelationSource:
         if isinstance(value, datetime):
             return value
 
-        return datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+        return datetime.fromisoformat(
+            str(value).replace(
+                "Z",
+                "+00:00",
+            )
+        )
 
     @staticmethod
     def _decode_raw_data(value: Any) -> bytes:
@@ -264,7 +524,9 @@ class PostgreSQLCorrelationSource:
         if isinstance(value, str):
             return base64.b64decode(value)
 
-        raise TypeError(f"Unsupported raw_data type: {type(value)!r}")
+        raise TypeError(
+            f"Unsupported raw_data type: {type(value)!r}"
+        )
 
     @classmethod
     def _event_from_row(
@@ -338,27 +600,79 @@ class PostgreSQLCorrelationSource:
             capture_id=row["capture_id"],
             record_sha256=row["record_sha256"],
         )
-    
-    def fetch_tenants(self) -> tuple[str, ...]:
-        query = """
-            SELECT DISTINCT tenant_id
-            FROM (
-                SELECT tenant_id
-                FROM evidence_events
 
-                UNION
+    # ------------------------------------------------------------------
+    # Cache adapters
+    # ------------------------------------------------------------------
 
-                SELECT tenant_id
-                FROM evidence_records
-            ) AS tenants
-            WHERE tenant_id IS NOT NULL
-            ORDER BY tenant_id
-        """
+    @classmethod
+    def _event_from_cache_payload(
+        cls,
+        payload: dict[str, Any],
+    ) -> Any:
 
-        with get_connection(self.config) as connection:
-            rows = connection.execute(query).fetchall()
+        return SimpleNamespace(
+            event_id=payload["event_id"],
+            tenant_id=payload["tenant_id"],
+            instance_name=payload["instance_name"],
+            evidence_type=SimpleNamespace(
+                value=payload["evidence_type"],
+            ),
+            event_type=SimpleNamespace(
+                value=payload["event_type"],
+            ),
+            timestamp=cls._parse_datetime(
+                payload["timestamp"],
+            ),
+            created_at=cls._parse_datetime(
+                payload["created_at"],
+            ),
+            actor=payload["actor"],
+            uid=payload["uid"],
+            resource=payload["resource"],
+            source=payload["source"],
+            source_path=payload["source_path"],
+            details=payload["details"],
+            sequence=payload["sequence"],
+            agent_id=payload["agent_id"],
+            raw_data=cls._decode_raw_data(
+                payload["raw_data"],
+            ),
+            sha256=payload["sha256"],
+        )
 
-        return tuple(row["tenant_id"] for row in rows)
+    @classmethod
+    def _record_from_cache_payload(
+        cls,
+        payload: dict[str, Any],
+    ) -> Any:
+
+        return SimpleNamespace(
+            evidence_id=payload["evidence_id"],
+            tenant_id=payload["tenant_id"],
+            tenant_hash=payload["tenant_hash"],
+            project_id=payload["project_id"],
+            instance_name=payload["instance_name"],
+            scope=payload["scope"],
+            source=payload["source"],
+            source_path=payload["source_path"],
+            acquisition_layer=payload["acquisition_layer"],
+            acquired_from=payload["acquired_from"],
+            attribution_method=payload["attribution_method"],
+            collected_at=cls._parse_datetime(
+                payload["collected_at"],
+            ),
+            raw_data=cls._decode_raw_data(
+                payload["raw_data"],
+            ),
+            sha256=payload["sha256"],
+            size_bytes=payload["size_bytes"],
+            sequence_start=payload["sequence_start"],
+            sequence_end=payload["sequence_end"],
+            capture_id=payload["capture_id"],
+            record_sha256=payload["record_sha256"],
+        )
+
 
 # Backwards-compatible name while the codebase transitions.
 CentralEvidenceReader = PostgreSQLCorrelationSource

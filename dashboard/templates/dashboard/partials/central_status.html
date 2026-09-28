@@ -1,0 +1,40 @@
+{% load dashboard_formatting %}
+
+{% if central_available is False %}
+
+<div class="central-status-banner central-status-unavailable">
+
+    <div class="central-status-indicator"></div>
+
+    <div class="central-status-content">
+
+        <strong>
+            Central evidence store unavailable
+        </strong>
+
+
+        {% if using_last_known_data %}
+
+        <p>
+            Live Central data cannot currently be retrieved.
+            The dashboard is showing the last known data available.
+        </p>
+
+
+        {% if last_known_timestamp %}
+
+        <p class="central-status-timestamp">
+            Last known data:
+            {{ last_known_timestamp|display_datetime }}
+        </p>
+        {% endif %}
+
+        {% else %}
+        <p>
+            Live evidence and correlation data cannot currently
+            be retrieved, and no previous dashboard state is available.
+        </p>
+        {% endif %}
+    </div>
+</div>
+{% endif %}

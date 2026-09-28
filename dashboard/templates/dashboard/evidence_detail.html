@@ -1,4 +1,5 @@
 {% extends "dashboard/base.html" %}
+{% load dashboard_formatting %}
 
 {% block title %}
 Evidence Detail · Evidence Correlation Platform
@@ -10,10 +11,13 @@ Evidence Detail
 
 {% block content %}
 
-<div class="page-header">
-    <div class="page-header-main">
+<div class="section-header">
+
+   
+    <div class="section-header-main">
 
         <div class="breadcrumbs">
+
             <a href="{% url 'dashboard:evidence' %}">
                 Evidence
             </a>
@@ -21,243 +25,648 @@ Evidence Detail
             <span class="breadcrumb-separator">
                 /
             </span>
-
             <span class="breadcrumb-current">
                 Detail
             </span>
         </div>
-
-        <h1 class="page-title">
+        <h1 class="section-title">
             Evidence Detail
         </h1>
-
-        <p class="page-description">
-            Evidence record, provenance, and integrity information.
+        <p class="section-description">
+            Forensic examination of an individual evidence item,
+            including identity, provenance, and integrity metadata.
         </p>
-
     </div>
 </div>
-<!DOCTYPE html>
-<html lang="en">
+{% include "dashboard/partials/central_status.html" %}
+<div class="detail-actions">
 
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Evidence Detail</title>
-</head>
+   
+    <a href="{% url 'dashboard:evidence' %}" class="btn btn-secondary">
+        ← Back to evidence
+    </a>
+   
 
-<body>
-    <p>
-        <a href="{% url 'dashboard:evidence' %}">
-            ← Back to Evidence
-        </a>
-    </p>
+</div>
 
-    <h1>Evidence Detail</h1>
+{% if evidence.event_id %}
 
-    {% if evidence.event_id %}
 
-    <section>
-        <h2>Evidence Event</h2>
+<div class="card">   
+    <div class="card-body">
 
-        <dl>
-            <dt><strong>Evidence ID</strong></dt>
-            <dd>
-                <code>{{ evidence.event_id }}</code>
-            </dd>
+        <div class="section-header">
 
-            <dt><strong>Tenant</strong></dt>
-            <dd>
-                {{ evidence.tenant_id|default:"—" }}
-            </dd>
+            <div class="section-header-main">
 
-            <dt><strong>Instance</strong></dt>
-            <dd>
-                {{ evidence.instance_name|default:"—" }}
-            </dd>
+                <h2 class="section-title">
+                    Evidence Event
+                </h2>
 
-            <dt><strong>Evidence type</strong></dt>
-            <dd>
-                {{ evidence.evidence_type|default:"—" }}
-            </dd>
+                <p class="section-description">
+                    Instance-level evidence event ingested into the
+                    central evidence store.
+                </p>
 
-            <dt><strong>Event type</strong></dt>
-            <dd>
-                {{ evidence.event_type|default:"—" }}
-            </dd>
+            </div>
 
-            <dt><strong>Timestamp</strong></dt>
-            <dd>
-                {{ evidence.timestamp|default:"—" }}
-            </dd>
+        </div>
 
-            <dt><strong>Actor</strong></dt>
-            <dd>
-                {{ evidence.actor|default:"—" }}
-            </dd>
 
-            <dt><strong>UID</strong></dt>
-            <dd>
-                {{ evidence.uid|default:"—" }}
-            </dd>
+        <!-- {# ---------------------------------------------------- #}
+        {# Integrity #}
+        {# ---------------------------------------------------- #} -->
 
-            <dt><strong>Resource</strong></dt>
-            <dd>
-                {{ evidence.resource|default:"—" }}
-            </dd>
+        <div class="integrity-status">
 
-            <dt><strong>Source</strong></dt>
-            <dd>
-                {{ evidence.source|default:"—" }}
-            </dd>
+            <div class="integrity-status-dot"></div>
 
-            <dt><strong>Source path</strong></dt>
-            <dd>
-                {{ evidence.source_path|default:"—" }}
-            </dd>
+            <div>
 
-            <dt><strong>Sequence</strong></dt>
-            <dd>
-                {{ evidence.sequence|default:"—" }}
-            </dd>
+                <div class="integrity-status-title">
+                    SHA-256 recorded
+                </div>
 
-            <dt><strong>Agent ID</strong></dt>
-            <dd>
-                {{ evidence.agent_id|default:"—" }}
-            </dd>
+                <div class="integrity-status-text">
+                    A SHA-256 digest is recorded for this evidence item.
+                    The dashboard does not recalculate the digest here.
+                </div>
 
-            <dt><strong>SHA-256</strong></dt>
-            <dd>
-                <code>{{ evidence.sha256|default:"—" }}</code>
-            </dd>
+            </div>
 
-            <dt><strong>Created at</strong></dt>
-            <dd>
-                {{ evidence.created_at|default:"—" }}
-            </dd>
+        </div>
+
+        <h3 class="detail-section-title">
+            Identity
+        </h3>
+
+        <dl class="detail-list">
+
+            <div class="detail-row">
+
+                <dt class="detail-label">
+                    Evidence ID
+                </dt>
+
+                <dd class="detail-value hash-value">
+                    <code>{{ evidence.event_id }}</code>
+                </dd>
+            </div>
+
+            <div class="detail-row">
+
+                <dt class="detail-label">
+                    Tenant
+                </dt>
+                <dd class="detail-value">
+                    {{ evidence.tenant_id|default:"—" }}
+                </dd>
+            </div>
+            <div class="detail-row">
+
+                <dt class="detail-label">
+                    Instance
+                </dt>
+
+                <dd class="detail-value">
+                    {{ evidence.instance_name|default:"—" }}
+                </dd>
+            </div>
+
+            <div class="detail-row">
+
+                <dt class="detail-label">
+                    Evidence type
+                </dt>
+                <dd class="detail-value">
+                    {{ evidence.evidence_type|default:"—" }}
+                </dd>
+            </div>
+            <div class="detail-row">
+                <dt class="detail-label">
+                    Event type
+                </dt>
+                <dd class="detail-value">
+                    {{ evidence.event_type|display_value|default:"—" }}
+                </dd>
+            </div>
+
+            <div class="detail-row">
+                <dt class="detail-label">
+                    Timestamp
+                </dt>
+                <dd class="detail-value">
+                    {{ evidence.timestamp|display_datetime|default:"—" }}
+                </dd>
+            </div>
         </dl>
-    </section>
 
-    <hr>
 
-    <section>
-        <h2>Details</h2>
+        <!-- {# ---------------------------------------------------- #}
+        {# Event context #}
+        {# ---------------------------------------------------- #} -->
 
-        {% if evidence.details %}
-        <pre>{{ evidence.details }}</pre>
-        {% elif evidence.details_json %}
-        <pre>{{ evidence.details_json }}</pre>
-        {% else %}
-        <p>No additional details available.</p>
-        {% endif %}
-    </section>
+        <h3 class="detail-section-title">
+            Event context
+        </h3>
 
-    {% elif evidence.evidence_id %}
+        <dl class="detail-list">
 
-    <section>
-        <h2>Forensic Evidence Record</h2>
+            <div class="detail-row">
 
-        <dl>
-            <dt><strong>Evidence ID</strong></dt>
-            <dd>
-                <code>{{ evidence.evidence_id }}</code>
-            </dd>
+                <dt class="detail-label">
+                    Actor
+                </dt>
+                <dd class="detail-value">
+                    {{ evidence.actor|default:"—" }}
+                </dd>
+            </div>
 
-            <dt><strong>Tenant</strong></dt>
-            <dd>
-                {{ evidence.tenant_id|default:"—" }}
-            </dd>
 
-            <dt><strong>Tenant hash</strong></dt>
-            <dd>
-                <code>{{ evidence.tenant_hash|default:"—" }}</code>
-            </dd>
+            <div class="detail-row">
 
-            <dt><strong>Project ID</strong></dt>
-            <dd>
-                {{ evidence.project_id|default:"—" }}
-            </dd>
+                <dt class="detail-label">
+                    UID
+                </dt>
 
-            <dt><strong>Instance</strong></dt>
-            <dd>
-                {{ evidence.instance_name|default:"—" }}
-            </dd>
+                <dd class="detail-value">
+                    {{ evidence.uid|default:"—" }}
+                </dd>
 
-            <dt><strong>Scope</strong></dt>
-            <dd>
-                {{ evidence.scope|default:"—" }}
-            </dd>
+            </div>
 
-            <dt><strong>Source</strong></dt>
-            <dd>
-                {{ evidence.source|default:"—" }}
-            </dd>
 
-            <dt><strong>Source path</strong></dt>
-            <dd>
-                {{ evidence.source_path|default:"—" }}
-            </dd>
+            <div class="detail-row">
 
-            <dt><strong>Acquisition layer</strong></dt>
-            <dd>
-                {{ evidence.acquisition_layer|default:"—" }}
-            </dd>
+                <dt class="detail-label">
+                    Resource
+                </dt>
 
-            <dt><strong>Acquired from</strong></dt>
-            <dd>
-                {{ evidence.acquired_from|default:"—" }}
-            </dd>
+                <dd class="detail-value">
+                    {{ evidence.resource|default:"—" }}
+                </dd>
 
-            <dt><strong>Attribution method</strong></dt>
-            <dd>
-                {{ evidence.attribution_method|default:"—" }}
-            </dd>
+            </div>
 
-            <dt><strong>Collected at</strong></dt>
-            <dd>
-                {{ evidence.collected_at|default:"—" }}
-            </dd>
 
-            <dt><strong>Size</strong></dt>
-            <dd>
-                {{ evidence.size_bytes|default:"—" }} bytes
-            </dd>
+            <div class="detail-row">
 
-            <dt><strong>Sequence start</strong></dt>
-            <dd>
-                {{ evidence.sequence_start|default:"—" }}
-            </dd>
+                <dt class="detail-label">
+                    Source
+                </dt>
 
-            <dt><strong>Sequence end</strong></dt>
-            <dd>
-                {{ evidence.sequence_end|default:"—" }}
-            </dd>
+                <dd class="detail-value">
+                    {{ evidence.source|default:"—" }}
+                </dd>
 
-            <dt><strong>Capture ID</strong></dt>
-            <dd>
-                <code>{{ evidence.capture_id|default:"—" }}</code>
-            </dd>
+            </div>
 
-            <dt><strong>SHA-256</strong></dt>
-            <dd>
-                <code>{{ evidence.sha256|default:"—" }}</code>
-            </dd>
 
-            <dt><strong>Record SHA-256</strong></dt>
-            <dd>
-                <code>{{ evidence.record_sha256|default:"—" }}</code>
-            </dd>
+            <div class="detail-row">
+
+                <dt class="detail-label">
+                    Source path
+                </dt>
+
+                <dd class="detail-value">
+                    {{ evidence.source_path|default:"—" }}
+                </dd>
+
+            </div>
+
+
+            <div class="detail-row">
+
+                <dt class="detail-label">
+                    Sequence
+                </dt>
+
+                <dd class="detail-value">
+                    {{ evidence.sequence|default:"—" }}
+                </dd>
+
+            </div>
+
+
+            <div class="detail-row">
+
+                <dt class="detail-label">
+                    Agent ID
+                </dt>
+
+                <dd class="detail-value">
+                    {{ evidence.agent_id|default:"—" }}
+                </dd>
+
+            </div>
+
+
+            <div class="detail-row">
+
+                <dt class="detail-label">
+                    Created at
+                </dt>
+
+                <dd class="detail-value">
+                    {{ evidence.created_at|display_datetime|default:"—" }}
+                </dd>
+
+            </div>
+
         </dl>
-    </section>
 
-    {% else %}
+        <h3 class="detail-section-title">
+            Integrity
+        </h3>
 
-    <p>
-        The evidence item could not be identified.
-    </p>
+        <dl class="detail-list">
 
-    {% endif %}
-</body>
+            <div class="detail-row">
 
-</html>
+                <dt class="detail-label">
+                    SHA-256
+                </dt>
+
+                <dd class="detail-value hash-value">
+                    <code>
+                    {{ evidence.sha256|default:"—" }}
+                </code>
+                </dd>
+
+            </div>
+
+        </dl>
+
+        <h3 class="detail-section-title">
+            Event details
+        </h3>
+        <div class="raw-evidence">
+            {% if evidence.details %}
+            <pre>{{ evidence.details }}</pre>
+            {% elif evidence.details_json %}
+            <pre>{{ evidence.details_json }}</pre>
+            {% else %}
+            <p>
+                No additional event details are available.
+            </p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+{% elif evidence.evidence_id %}
+
+<!-- {# ============================================================ #}
+{# FORENSIC RECORD #}
+{# ============================================================ #} -->
+
+<div class="card">
+
+   
+    <div class="card-body">
+
+        <div class="section-header">
+
+            <div class="section-header-main">
+
+                <h2 class="section-title">
+                    Forensic Evidence Record
+                </h2>
+
+                <p class="section-description">
+                    Host or platform-level forensic evidence collected
+                    and preserved by the acquisition pipeline.
+                </p>
+
+            </div>
+
+        </div>
+
+        <div class="integrity-status">
+
+            <div class="integrity-status-dot"></div>
+
+            <div>
+
+                <div class="integrity-status-title">
+                    Integrity metadata recorded
+                </div>
+
+                <div class="integrity-status-text">
+                    SHA-256 and record-level integrity metadata are
+                    recorded for this evidence item.
+                </div>
+
+            </div>
+
+        </div>
+
+        <h3 class="detail-section-title">
+            Identity
+        </h3>
+        <dl class="detail-list">
+            <div class="detail-row">
+
+                <dt class="detail-label">
+                    Evidence ID
+                </dt>
+                <dd class="detail-value hash-value">
+                    <code>{{ evidence.evidence_id }}</code>
+                </dd>
+            </div>
+
+
+            <div class="detail-row">
+                <dt class="detail-label">
+                    Tenant
+                </dt>
+                <dd class="detail-value">
+                    {{ evidence.tenant_id|default:"—" }}
+                </dd>
+            </div>
+
+            <div class="detail-row">
+                <dt class="detail-label">
+                    Tenant hash
+                </dt>
+                <dd class="detail-value hash-value">
+                    <code>
+                    {{ evidence.tenant_hash|default:"—" }}
+                </code>
+                </dd>
+            </div>
+
+
+            <div class="detail-row">
+
+                <dt class="detail-label">
+                    Project ID
+                </dt>
+
+                <dd class="detail-value">
+                    {{ evidence.project_id|default:"—" }}
+                </dd>
+
+            </div>
+
+
+            <div class="detail-row">
+
+                <dt class="detail-label">
+                    Instance
+                </dt>
+
+                <dd class="detail-value">
+                    {{ evidence.instance_name|default:"—" }}
+                </dd>
+
+            </div>
+
+
+            <div class="detail-row">
+
+                <dt class="detail-label">
+                    Scope
+                </dt>
+
+                <dd class="detail-value">
+                    {{ evidence.scope|default:"—" }}
+                </dd>
+
+            </div>
+
+        </dl>
+
+
+        <!-- {# ---------------------------------------------------- #}
+        {# Provenance #}
+        {# ---------------------------------------------------- #} -->
+
+        <h3 class="detail-section-title">
+            Provenance
+        </h3>
+
+        <dl class="detail-list">
+
+            <div class="detail-row">
+
+                <dt class="detail-label">
+                    Source
+                </dt>
+
+                <dd class="detail-value">
+                    {{ evidence.source|default:"—" }}
+                </dd>
+
+            </div>
+
+
+            <div class="detail-row">
+
+                <dt class="detail-label">
+                    Source path
+                </dt>
+
+                <dd class="detail-value">
+                    {{ evidence.source_path|default:"—" }}
+                </dd>
+
+            </div>
+
+
+            <div class="detail-row">
+
+                <dt class="detail-label">
+                    Acquisition layer
+                </dt>
+
+                <dd class="detail-value">
+                    {{ evidence.acquisition_layer|default:"—" }}
+                </dd>
+
+            </div>
+
+
+            <div class="detail-row">
+
+                <dt class="detail-label">
+                    Acquired from
+                </dt>
+
+                <dd class="detail-value">
+                    {{ evidence.acquired_from|default:"—" }}
+                </dd>
+
+            </div>
+
+
+            <div class="detail-row">
+
+                <dt class="detail-label">
+                    Attribution method
+                </dt>
+
+                <dd class="detail-value">
+                    {{ evidence.attribution_method|default:"—" }}
+                </dd>
+
+            </div>
+
+
+            <div class="detail-row">
+
+                <dt class="detail-label">
+                    Collected at
+                </dt>
+
+                <dd class="detail-value">
+                    {{ evidence.collected_at|display_datetime|default:"—" }}
+                </dd>
+
+            </div>
+
+
+            <div class="detail-row">
+
+                <dt class="detail-label">
+                    Size
+                </dt>
+
+                <dd class="detail-value">
+                    {{ evidence.size_bytes|default:"—" }} bytes
+                </dd>
+
+            </div>
+
+
+            <div class="detail-row">
+
+                <dt class="detail-label">
+                    Sequence start
+                </dt>
+
+                <dd class="detail-value">
+                    {{ evidence.sequence_start|default:"—" }}
+                </dd>
+
+            </div>
+
+
+            <div class="detail-row">
+
+                <dt class="detail-label">
+                    Sequence end
+                </dt>
+
+                <dd class="detail-value">
+                    {{ evidence.sequence_end|default:"—" }}
+                </dd>
+
+            </div>
+
+
+            <div class="detail-row">
+
+                <dt class="detail-label">
+                    Capture ID
+                </dt>
+
+                <dd class="detail-value hash-value">
+                    <code>
+                    {{ evidence.capture_id|default:"—" }}
+                </code>
+                </dd>
+
+            </div>
+
+        </dl>
+
+
+        <h3 class="detail-section-title">
+            Integrity
+        </h3>
+
+        <dl class="detail-list">
+
+            <div class="detail-row">
+
+                <dt class="detail-label">
+                    SHA-256
+                </dt>
+
+                <dd class="detail-value hash-value">
+                    <code>
+                    {{ evidence.sha256|default:"—" }}
+                </code>
+                </dd>
+
+            </div>
+
+
+            <div class="detail-row">
+
+                <dt class="detail-label">
+                    Record SHA-256
+                </dt>
+
+                <dd class="detail-value hash-value">
+                    <code>
+                    {{ evidence.record_sha256|default:"—" }}
+                </code>
+                </dd>
+
+            </div>
+
+        </dl>
+
+
+        <!-- {# ---------------------------------------------------- #}
+        {# Raw evidence #}
+        {# ---------------------------------------------------- #} -->
+
+        <h3 class="detail-section-title">
+            Raw evidence
+        </h3>
+
+        <div class="raw-evidence">
+
+            {% if evidence.raw_data %}
+
+            <pre>{{ evidence.raw_data }}</pre>
+
+            {% else %}
+
+            <p>
+                Raw evidence data is not available for display.
+            </p>
+
+            {% endif %}
+
+        </div>
+
+    </div>
+   
+
+</div>
+
+{% else %}
+
+<div class="card">
+    <div class="card-body">
+        <div class="empty-state">
+            <h2>
+                Evidence item not found
+            </h2>
+            <p>
+                The requested evidence item could not be identified
+                in the central evidence store.
+            </p>
+            <a href="{% url 'dashboard:evidence' %}" class="btn btn-primary">
+                Return to evidence
+            </a>
+        </div>
+    </div>
+</div>
+{% endif %}
+
 {% endblock %}

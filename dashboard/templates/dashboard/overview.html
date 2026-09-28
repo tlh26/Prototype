@@ -15,164 +15,339 @@ Overview
     <div class="page-header-main">
 
         <div class="breadcrumbs">
+
             <span class="breadcrumb-current">
                 Overview
             </span>
+
         </div>
 
         <h1 class="page-title">
-            Overview
+            Evidence Correlation Overview
         </h1>
 
         <p class="page-description">
-            Central evidence, tenants, and correlation activity.
+            Central view of tenants, evidence, entities, relationships,
+            and correlation findings.
         </p>
 
     </div>
 
 </div>
 
-<!DOCTYPE html>
-<html lang="en">
+{% include "dashboard/partials/central_status.html" %}
 
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Evidence Correlation Dashboard</title>
-</head>
 
-<body>
-    <h1>Evidence Correlation Dashboard</h1>
+<!-- {# ============================================================
+KPI cards
+============================================================ #} -->
 
-    <p>
-        Overview of tenants, evidence, and correlation results
-        available in the central evidence store.
-    </p>
+<div class="metric-grid">
 
-    <hr>
+    <div class="card overview-stat-card">
 
-    <section>
-        <h2>System Summary</h2>
-
-        <ul>
-            <li>
-                <strong>Tenants:</strong>
-                {{ overview.tenant_count }}
-            </li>
-
-            <li>
-                <strong>Evidence processed:</strong>
-                {{ overview.evidence_count }}
-            </li>
-
-            <li>
-                <strong>Correlation findings:</strong>
-                {{ overview.finding_count }}
-            </li>
-
-            <li>
-                <strong>Entities:</strong>
-                {{ overview.entity_count }}
-            </li>
-
-            <li>
-                <strong>Relationships:</strong>
-                {{ overview.relationship_count }}
-            </li>
-        </ul>
-    </section>
-
-    <hr>
-
-    <section>
-        <h2>Tenants</h2>
-
-        {% if overview.tenants %}
-        {% for tenant in overview.tenants %}
-        <article>
-            <h3>{{ tenant.tenant_id }}</h3>
-
-            <ul>
-                <li>
-                    <strong>Evidence:</strong>
-                    {{ tenant.evidence_count }}
-                </li>
-
-                <li>
-                    <strong>Events:</strong>
-                    {{ tenant.event_count }}
-                </li>
-
-                <li>
-                    <strong>Forensic records:</strong>
-                    {{ tenant.record_count }}
-                </li>
-
-                <li>
-                    <strong>Instances:</strong>
-                    {{ tenant.instances|length }}
-                </li>
-            </ul>
-
-            <p>
-                <a href="{% url 'dashboard:evidence' %}?tenant_id={{ tenant.tenant_id }}">
-                    Evidence
-                </a>
-                |
-                <a href="{% url 'dashboard:correlations' %}?tenant_id={{ tenant.tenant_id }}">
-                    Correlations
-                </a>
-                |
-                <a href="{% url 'dashboard:timeline' %}?tenant_id={{ tenant.tenant_id }}">
-                    Timeline
-                </a>
-            </p>
-        </article>
-
-        {% if not forloop.last %}
-        <hr>
-        {% endif %}
-        {% endfor %}
-        {% else %}
-        <p>
-            No tenants were found in the central evidence store.
+        <p class="overview-stat-label">
+            Tenants
         </p>
-        {% endif %}
-    </section>
 
-    <hr>
+        <p class="overview-stat-value">
 
-    <nav>
-        <h2>Dashboard</h2>
+            {% if overview %}
+            {{ overview.tenant_count }}
+            {% else %}
+            —
+            {% endif %}
 
-        <ul>
-            <li>
-                <a href="{% url 'dashboard:tenants' %}">
-                    Tenant overview
+        </p>
+
+        <p class="overview-stat-note">
+            Logical tenant boundaries
+        </p>
+
+    </div>
+
+
+    <div class="card overview-stat-card">
+
+        <p class="overview-stat-label">
+            Evidence processed
+        </p>
+
+        <p class="overview-stat-value">
+
+            {% if overview %}
+            {{ overview.evidence_count }}
+            {% else %}
+            —
+            {% endif %}
+
+        </p>
+
+        <p class="overview-stat-note">
+            Current dashboard processing window
+        </p>
+
+    </div>
+
+
+    <div class="card overview-stat-card">
+
+        <p class="overview-stat-label">
+            Findings
+        </p>
+
+        <p class="overview-stat-value">
+
+            {% if overview %}
+            {{ overview.finding_count }}
+            {% else %}
+            —
+            {% endif %}
+
+        </p>
+
+        <p class="overview-stat-note">
+            Correlation results
+        </p>
+
+    </div>
+
+
+    <div class="card overview-stat-card">
+
+        <p class="overview-stat-label">
+            Entities
+        </p>
+
+        <p class="overview-stat-value">
+
+            {% if overview %}
+            {{ overview.entity_count }}
+            {% else %}
+            —
+            {% endif %}
+
+        </p>
+
+        <p class="overview-stat-note">
+            Extracted from processed evidence
+        </p>
+
+    </div>
+
+</div>
+
+
+<!-- {# ============================================================
+Tenant activity
+============================================================ #} -->
+
+<div class="card mb-20">
+
+    <div class="card-header">
+
+        <div>
+
+            <h2 class="card-title">
+                Tenant activity
+            </h2>
+
+            <p class="card-subtitle">
+                Evidence available by logical tenant boundary.
+            </p>
+
+        </div>
+
+        <a href="{% url 'dashboard:tenants' %}" class="btn btn-secondary">
+            View tenants
+        </a>
+
+    </div>
+
+
+    <div class="tenant-list">
+
+        {% if overview %}
+
+        {% for tenant in overview.tenants %}
+
+        <div class="tenant-row">
+
+            <div>
+
+                <a href="{% url 'dashboard:evidence' %}?tenant_id={{ tenant.tenant_id }}" class="tenant-name">
+                    {{ tenant.tenant_id }}
                 </a>
-            </li>
 
-            <li>
-                <a href="{% url 'dashboard:evidence' %}">
+                <div class="tenant-meta">
+
+                    {{ tenant.instances|length }}
+                    instance{{ tenant.instances|length|pluralize }}
+
+                </div>
+
+            </div>
+
+
+            <div class="tenant-stat">
+
+                <span class="tenant-stat-value">
+                    {{ tenant.evidence_count }}
+                </span>
+
+                <span class="tenant-stat-label">
                     Evidence
-                </a>
-            </li>
+                </span>
 
-            <li>
-                <a href="{% url 'dashboard:correlations' %}">
-                    Correlations
-                </a>
-            </li>
+            </div>
 
-            <li>
-                <a href="{% url 'dashboard:timeline' %}">
-                    Timeline
-                </a>
-            </li>
-        </ul>
-    </nav>
-</body>
 
-</html>
+            <div class="tenant-stat">
+
+                <span class="tenant-stat-value">
+                    {{ tenant.event_count }}
+                </span>
+
+                <span class="tenant-stat-label">
+                    Events
+                </span>
+
+            </div>
+
+
+            <div class="tenant-stat">
+
+                <span class="tenant-stat-value">
+                    {{ tenant.record_count }}
+                </span>
+
+                <span class="tenant-stat-label">
+                    Records
+                </span>
+
+            </div>
+
+
+            <div>
+
+                <a href="{% url 'dashboard:correlations' %}?tenant_id={{ tenant.tenant_id }}" class="btn btn-secondary">
+                    Investigate
+                </a>
+
+            </div>
+
+        </div>
+
+        {% empty %}
+
+        <div class="empty-state">
+
+            <h3 class="empty-state-title">
+                No tenants found
+            </h3>
+
+            <p class="empty-state-text">
+                No tenant boundaries are currently represented
+                in the central evidence store.
+            </p>
+
+        </div>
+
+        {% endfor %}
+
+        {% else %}
+
+        <div class="empty-state">
+
+            <h3 class="empty-state-title">
+                Tenant activity unavailable
+            </h3>
+
+            <p class="empty-state-text">
+                Tenant activity cannot currently be retrieved because
+                the central evidence store is unavailable.
+            </p>
+
+        </div>
+
+        {% endif %}
+
+    </div>
+
+</div>
+
+
+<!-- {# ============================================================
+Quick investigation actions
+============================================================ #} -->
+
+<div class="content-grid">
+
+    <div class="col-span-6">
+
+        <div class="card">
+
+            <div class="card-header">
+
+                <div>
+
+                    <h2 class="card-title">
+                        Investigate evidence
+                    </h2>
+
+                    <p class="card-subtitle">
+                        Inspect individual evidence items and provenance.
+                    </p>
+
+                </div>
+
+            </div>
+
+            <div class="card-body">
+
+                <a href="{% url 'dashboard:evidence' %}" class="btn btn-primary">
+                    Browse evidence
+                </a>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <div class="col-span-6">
+
+        <div class="card">
+
+            <div class="card-header">
+
+                <div>
+
+                    <h2 class="card-title">
+                        Investigate relationships
+                    </h2>
+
+                    <p class="card-subtitle">
+                        Examine findings generated by the correlation engine.
+                    </p>
+
+                </div>
+
+            </div>
+
+            <div class="card-body">
+
+                <a href="{% url 'dashboard:correlations' %}" class="btn btn-primary">
+                    View correlations
+                </a>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
 
 {% endblock %}
