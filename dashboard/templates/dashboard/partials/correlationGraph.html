@@ -1,0 +1,73 @@
+<div class="correlation-graph">
+    <div class="graph-legend">
+        <span class="graph-legend-item">
+            <span class="graph-node-marker graph-node-evidence"></span>
+            Evidence
+        </span>
+        <span class="graph-legend-item">
+            <span class="graph-node-marker graph-node-finding"></span>
+            Finding
+        </span>
+        <span class="graph-legend-item">
+            <span class="graph-edge-marker graph-edge-causal"></span>
+            Causal relationship
+        </span>
+    </div>
+
+    <div class="graph-connections">
+        {% for edge in graph.edges %}
+        <article class="graph-connection
+                {% if edge.kind == 'causal' %}
+                    graph-connection-causal
+                {% endif %}">
+
+            <div class="graph-connection-node">
+                <span class="graph-node-marker
+                        {% if edge.source|slice:':9' == 'evidence:' %}
+                            graph-node-evidence
+                        {% else %}
+                            graph-node-finding
+                        {% endif %}">
+                </span>
+                <span class="graph-node-kind">
+                    Source
+                </span>
+                <code>{{ edge.source_label }}</code>
+            </div>
+
+            <div class="graph-connection-link">
+                <span class="graph-edge-label">
+                    {{ edge.label }}
+                </span>
+                <span class="graph-edge-line"></span>
+                {% if edge.kind == 'causal' %}
+                <span class="graph-edge-confidence">
+                    Confidence:
+                    {{ edge.confidence|floatformat:2 }}
+                </span>
+                {% endif %}
+            </div>
+
+            <div class="graph-connection-node">
+                <span class="graph-node-marker
+                        {% if edge.target|slice:':9' == 'evidence:' %}
+                            graph-node-evidence
+                        {% else %}
+                            graph-node-finding
+                        {% endif %}">
+                </span>
+                <span class="graph-node-kind">
+                    Target
+                </span>
+                <code>{{ edge.target_label }}</code>
+            </div>
+
+            {% if edge.kind == 'causal' and edge.explanation %}
+            <p class="graph-connection-explanation">
+                {{ edge.explanation }}
+            </p>
+            {% endif %}
+        </article>
+        {% endfor %}
+    </div>
+</div>

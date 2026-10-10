@@ -1,5 +1,7 @@
+# dashboard/views.py
 from __future__ import annotations
 
+from django.shortcuts import render
 from django.http import Http404
 from django.shortcuts import render
 from correlation.centralEvidence import (
@@ -13,6 +15,13 @@ from dashboard.services.factory import (
     build_timeline_service,
     build_overview_service
 )
+from correlation.centralEvidence import PostgreSQLCorrelationSource
+from correlation.engine import CorrelationEngine
+
+from dashboard.services.correlation import CorrelationService
+from dashboard.services.correlationPresentation import (
+    CorrelationPresentationAdapter,
+)
 
 
 def _begin_source_read():
@@ -24,6 +33,7 @@ def _begin_source_read():
     """
     source = build_correlation_source()
     source.begin_read()
+    source.check_central()
     return source
 
 
@@ -164,28 +174,35 @@ def timeline(request):
     )
 
 
+
 def correlations(request):
     source = _begin_source_read()
 
     tenant_id = request.GET.get("tenant_id") or None
     instance_name = request.GET.get("instance_name") or None
 
+    result = None
+    presentation = None
+
     try:
-        result = build_correlation_service().correlate(
+        service = build_correlation_service()
+
+        result = service.correlate(
             tenant_id=tenant_id,
             instance_name=instance_name,
             limit=100,
         )
+
+        presentation = service.presentation_adapter.adapt(result)
+
     except CentralEvidenceUnavailable:
         result = None
+        presentation = None
 
     context = {
         "result": result,
-        "findings": (
-            result.findings
-            if result is not None
-            else ()
-        ),
+        "presentation": presentation,
+        "findings": result.findings if result is not None else (),
         "tenant_id": tenant_id,
         "instance_name": instance_name,
         **_source_context(source),

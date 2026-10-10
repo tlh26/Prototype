@@ -3,52 +3,146 @@
    Global application styles
    ============================================================ */
 
+/* ==========================================================
+   Dashboard design tokens
+   ========================================================== */
+
 :root {
-    --color-bg: #f5f7fa;
+    color-scheme: light;
+
+    --color-bg: #f4f7fb;
     --color-surface: #ffffff;
-    --color-surface-muted: #f8fafc;
+    --color-surface-muted: #f7f9fc;
+    --color-surface-hover: #eef3f9;
 
-    --color-border: #e2e8f0;
-    --color-border-strong: #cbd5e1;
+    --color-border: #e1e7f0;
+    --color-border-strong: #c6d1df;
 
-    --color-text: #1C0770;
-    --color-text-muted: #64748b;
-    --color-text-subtle: #94a3b8;
+    --color-text: #17243a;
+    --color-text-muted: #5f6f85;
+    --color-text-subtle: #8795a8;
 
-    --color-primary: #547792;
-    --color-primary-dark: #1d4ed8;
-    --color-primary-soft: #eff6ff;
+    --color-primary: #315fce;
+    --color-primary-dark: #244ba8;
+    --color-primary-soft: #eaf0ff;
+    --color-on-primary: #ffffff;
 
-    --color-success: #15803d;
-    --color-success-soft: #f0fdf4;
+    --color-success: #16805d;
+    --color-success-soft: #e6f6ef;
 
-    --color-warning: #b45309;
-    --color-warning-soft: #fffbeb;
+    --color-warning: #a96508;
+    --color-warning-soft: #fff3d9;
 
-    --color-danger: #b91c1c;
-    --color-danger-soft: #fef2f2;
+    --color-danger: #c43d4b;
+    --color-danger-soft: #ffebed;
+    --color-danger-strong: #7f1d1d;
+    --color-on-danger-strong: #ffffff;
 
-    --color-info: #0369a1;
-    --color-info-soft: #f0f9ff;
+    --color-info: #1675a8;
+    --color-info-soft: #e5f4fc;
+
+    --color-success-border: #bbf7d0;
+    --color-code-bg: #0f172a;
+    --color-code-text: #e2e8f0;
+
+    --color-sidebar: #ffffff;
+    --color-topbar: rgba(255, 255, 255, 0.92);
+
+    --border-color: var(--color-border);
+    --card-background: var(--color-surface);
+    --muted-text: var(--color-text-muted);
 
     --sidebar-width: 248px;
     --topbar-height: 64px;
 
     --radius-sm: 6px;
-    --radius-md: 8px;
-    --radius-lg: 12px;
+    --radius-md: 9px;
+    --radius-lg: 14px;
 
-    --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.05);
-    --shadow-md: 0 4px 12px rgba(15, 23, 42, 0.08);
+    --shadow-sm: 0 1px 3px rgba(20, 35, 60, 0.05);
+    --shadow-md: 0 8px 24px rgba(20, 35, 60, 0.08);
 
-    --font-family:
-        Inter,
-        ui-sans-serif,
-        system-ui,
-        -apple-system,
-        BlinkMacSystemFont,
-        "Segoe UI",
-        sans-serif;
+    --font-family: Inter, ui-sans-serif, system-ui,
+        -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+
+}
+
+/* ==========================================================
+   Dark theme
+   ========================================================== */
+
+:root[data-theme="dark"] {
+    color-scheme: dark;
+
+    --color-bg: #0d1422;
+    --color-surface: #151f30;
+    --color-surface-muted: #1a2639;
+    --color-surface-hover: #223149;
+
+    --color-border: #2a3950;
+    --color-border-strong: #3b4d66;
+
+    --color-text: #e8eef8;
+    --color-text-muted: #b0bdd0;
+    --color-text-subtle: #8595ad;
+
+    --color-primary: #8aafff;
+    --color-primary-dark: #b0c8ff;
+    --color-primary-soft: #23365b;
+    --color-on-primary: #0d1422;
+
+    --color-success: #5bd5a2;
+    --color-success-soft: #173d34;
+
+    --color-warning: #f4c16b;
+    --color-warning-soft: #44351f;
+
+    --color-danger: #ff8994;
+    --color-danger-soft: #48252f;
+    --color-danger-strong: #ff8994;
+    --color-on-danger-strong: #0d1422;
+
+    --color-info: #77cafa;
+    --color-info-soft: #19394d;
+
+    --color-success-border: #276448;
+    --color-code-bg: #080d16;
+    --color-code-text: #e8eef8;
+
+    --color-sidebar: #111a29;
+    --color-topbar: rgba(17, 26, 41, 0.94);
+
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.18);
+    --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.22);
+}
+
+/* Smooth transitions without affecting layout */
+body,
+.sidebar,
+.topbar,
+.card,
+.metric-card,
+.overview-stat-card,
+.correlation-card,
+.data-table th,
+.data-table td,
+.form-control,
+.btn-secondary {
+    transition:
+        background-color 160ms ease,
+        border-color 160ms ease,
+        color 160ms ease,
+        box-shadow 160ms ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+    *,
+    *::before,
+    *::after {
+        transition-duration: 0.01ms !important;
+        animation-duration: 0.01ms !important;
+    }
 }
 
 
@@ -83,6 +177,96 @@ body {
 a {
     color: inherit;
     text-decoration: none;
+}
+
+/* Theme-aware application shell */
+
+body {
+    background: var(--color-bg);
+    color: var(--color-text);
+}
+
+.sidebar {
+    background: var(--color-sidebar);
+    border-color: var(--color-border);
+}
+
+.topbar {
+    background: var(--color-topbar);
+    border-color: var(--color-border);
+}
+
+.card,
+.metric-card,
+.overview-stat-card,
+.correlation-card {
+    background: var(--color-surface);
+    border-color: var(--color-border);
+    box-shadow: var(--shadow-sm);
+}
+
+.card-header {
+    border-color: var(--color-border);
+}
+
+.sidebar-nav-link:hover {
+    background: var(--color-surface-hover);
+}
+
+.sidebar-nav-link.active {
+    background: var(--color-primary-soft);
+    color: var(--color-primary);
+}
+
+.data-table th {
+    background: var(--color-surface-muted);
+    color: var(--color-text-muted);
+    border-color: var(--color-border);
+}
+
+.data-table td {
+    color: var(--color-text);
+    border-color: var(--color-border);
+}
+
+.data-table tbody tr:hover {
+    background: var(--color-surface-muted);
+}
+
+.form-control {
+    background: var(--color-surface);
+    color: var(--color-text);
+    border-color: var(--color-border-strong);
+}
+
+.form-control::placeholder {
+    color: var(--color-text-subtle);
+}
+
+.btn-secondary {
+    background: var(--color-surface);
+    color: var(--color-text);
+    border-color: var(--color-border-strong);
+}
+
+.btn-secondary:hover {
+    background: var(--color-surface-hover);
+}
+
+/* Keep long evidence identifiers readable */
+.mono,
+.correlation-evidence-item {
+    overflow-wrap: anywhere;
+}
+
+/* Keyboard accessibility */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 3px;
 }
 
 button,
@@ -149,7 +333,7 @@ textarea {
     border-radius: var(--radius-md);
 
     background: var(--color-primary);
-    color: white;
+    color: var(--color-on-primary);
 
     font-size: 14px;
     font-weight: 700;
@@ -318,7 +502,7 @@ textarea {
 
     padding: 0 28px;
 
-    background: rgba(255, 255, 255, 0.96);
+    background: var(--color-topbar);
 
     border-bottom: 1px solid var(--color-border);
 
@@ -622,7 +806,7 @@ textarea {
 
 .btn-primary {
     background: var(--color-primary);
-    color: white;
+    color: var(--color-on-primary);
 }
 
 .btn-primary:hover {
@@ -1324,8 +1508,8 @@ textarea {
 
     border-radius: var(--radius-md);
 
-    background: #0f172a;
-    color: #e2e8f0;
+    background: var(--color-code-bg);
+    color: var(--color-code-text);
 
     overflow-x: auto;
 
@@ -1352,7 +1536,7 @@ textarea {
 
     padding: 12px 14px;
 
-    border: 1px solid #bbf7d0;
+    border: 1px solid var(--color-success-border);
     border-radius: var(--radius-md);
 
     background: var(--color-success-soft);
@@ -1651,8 +1835,8 @@ textarea {
 }
 
 .severity-critical {
-    background: #7f1d1d;
-    color: white;
+    background: var(--color-danger-strong);
+    color: var(--color-on-danger-strong);
 }
 
 
@@ -1761,7 +1945,7 @@ textarea {
 }
 
 .evidence-table tbody tr {
-    border-top: 1px solid var(--border-color);
+    border-top: 1px solid var(--color-border);
 }
 
 .empty-state {
@@ -1793,7 +1977,7 @@ textarea {
     bottom: 0;
     left: 9rem;
     width: 1px;
-    background: var(--border-color);
+    background: var(--color-border);
 }
 
 .timeline-entry {
@@ -1809,7 +1993,7 @@ textarea {
     text-align: right;
     font-family: monospace;
     font-size: 0.8rem;
-    color: var(--muted-text);
+    color: var(--color-text-muted);
 }
 
 .timeline-marker-column {
@@ -1826,13 +2010,13 @@ textarea {
     display: flex;
     align-items: center;
     justify-content: center;
-    border: 3px solid var(--card-background);
+    border: 3px solid var(--color-surface);
     border-radius: 50%;
     font-size: 0.65rem;
 }
 
 .timeline-marker-instance {
-    background: var(--primary-color);
+    background: var(--color-primary);
 }
 
 .timeline-content {
@@ -1855,7 +2039,7 @@ textarea {
     flex-wrap: wrap;
     gap: 0.75rem;
     font-size: 0.78rem;
-    color: var(--muted-text);
+    color: var(--color-text-muted);
 }
 
 .timeline-meta a {
@@ -1899,9 +2083,9 @@ textarea {
 
 .correlation-card {
     padding: 1.25rem;
-    border: 1px solid var(--border-color);
+    border: 1px solid var(--color-border);
     border-radius: 0.5rem;
-    background: var(--card-background);
+    background: var(--color-surface);
 }
 
 .correlation-card-header {
@@ -1915,7 +2099,7 @@ textarea {
     margin-bottom: 0.3rem;
     font-family: monospace;
     font-size: 0.75rem;
-    color: var(--muted-text);
+    color: var(--color-text-muted);
 }
 
 .correlation-card-title {
@@ -1934,8 +2118,8 @@ textarea {
     flex-wrap: wrap;
     gap: 1.5rem;
     padding: 0.9rem 0;
-    border-top: 1px solid var(--border-color);
-    border-bottom: 1px solid var(--border-color);
+    border-top: 1px solid var(--color-border);
+    border-bottom: 1px solid var(--color-border);
     font-size: 0.8rem;
 }
 
@@ -1949,7 +2133,7 @@ textarea {
     font-size: 0.7rem;
     text-transform: uppercase;
     letter-spacing: 0.04em;
-    color: var(--muted-text);
+    color: var(--color-text-muted);
 }
 
 .correlation-evidence {
@@ -1971,7 +2155,7 @@ textarea {
     justify-content: space-between;
     gap: 1rem;
     padding: 0.6rem 0;
-    border-bottom: 1px solid var(--border-color);
+    border-bottom: 1px solid var(--color-border);
 }
 
 .correlation-evidence-item:last-child {
@@ -1982,7 +2166,7 @@ textarea {
     margin-top: 1rem;
     padding: 1rem;
     border-radius: 0.4rem;
-    background: var(--surface-secondary);
+    background: var(--color-surface-muted);
 }
 
 .correlation-basis .detail-list {
@@ -2017,12 +2201,12 @@ textarea {
     gap: 0.85rem;
     margin-bottom: 1rem;
     padding: 1rem 1.1rem;
-    border: 1px solid var(--border-color);
+    border: 1px solid var(--color-border);
     border-radius: 0.5rem;
 }
 
 .central-status-unavailable {
-    background: var(--surface-secondary);
+    background: var(--color-surface-muted);
 }
 
 .central-status-indicator {
@@ -2031,7 +2215,7 @@ textarea {
     height: 0.7rem;
     margin-top: 0.35rem;
     border-radius: 50%;
-    background: #b45309;
+    background: var(--color-warning);
 }
 
 .central-status-content {
@@ -2069,4 +2253,1002 @@ textarea {
 
 .system-status-dot-unknown {
     background: var(--color-text-muted);
+}
+
+/* Correlation overview and execution metrics */
+
+.correlation-metrics {
+    margin-bottom: 1.25rem;
+}
+
+.finding-summary-strip,
+.graph-summary {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 1rem;
+    margin: 1rem 0;
+}
+
+.finding-summary-item,
+.graph-summary>div {
+    min-width: 0;
+    padding: 0.9rem;
+    border: 1px solid var(--color-border);
+    border-radius: 0.65rem;
+    background: var(--color-surface);
+}
+
+.finding-summary-label,
+.finding-summary-note,
+.graph-summary-label {
+    display: block;
+    color: var(--color-text-muted);
+    font-size: 0.8rem;
+}
+
+.finding-summary-item>strong {
+    display: block;
+    margin: 0.35rem 0;
+    font-size: 1.15rem;
+}
+
+.finding-score-divider {
+    color: var(--color-text-muted);
+    font-weight: normal;
+}
+
+.finding-status {
+    display: inline-block;
+    margin: 0.4rem 0;
+    padding: 0.25rem 0.55rem;
+    border: 1px solid var(--color-border);
+    border-radius: 999px;
+    font-size: 0.8rem;
+}
+
+.finding-status-positive {
+    color: var(--color-success);
+}
+
+.finding-status-neutral {
+    color: var(--color-text-muted);
+}
+
+/* Partial relationship graph */
+
+.graph-summary-value {
+    display: block;
+    font-size: 1.4rem;
+    font-weight: 650;
+}
+
+.graph-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    padding: 0.75rem 0;
+}
+
+.graph-legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    font-size: 0.85rem;
+}
+
+.graph-node-marker {
+    display: inline-block;
+    flex: 0 0 auto;
+    width: 0.7rem;
+    height: 0.7rem;
+    border: 2px solid currentColor;
+    border-radius: 50%;
+}
+
+.graph-node-evidence {
+    color: var(--color-info);
+}
+
+.graph-node-finding {
+    color: var(--color-success);
+    border-radius: 2px;
+}
+
+.graph-edge-marker {
+    display: inline-block;
+    width: 1.2rem;
+    border-top: 2px solid currentColor;
+}
+
+.graph-edge-causal {
+    color: var(--color-warning);
+}
+
+.graph-connections {
+    display: grid;
+    gap: 0.8rem;
+}
+
+.graph-connection {
+    padding: 1rem;
+    border: 1px solid var(--color-border);
+    border-radius: 0.65rem;
+}
+
+.graph-connection-causal {
+    border-left: 3px solid var(--color-warning);
+}
+
+.graph-connection-node {
+    display: grid;
+    grid-template-columns: auto auto minmax(0, 1fr);
+    align-items: center;
+    gap: 0.55rem;
+}
+
+.graph-node-kind {
+    color: var(--color-text-muted);
+    font-size: 0.8rem;
+}
+
+.graph-connection-node code {
+    overflow-wrap: anywhere;
+}
+
+.graph-connection-link {
+    display: grid;
+    justify-items: center;
+    gap: 0.25rem;
+    margin: 0.75rem 0;
+}
+
+.graph-edge-label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-align: center;
+}
+
+.graph-edge-line {
+    width: 2px;
+    height: 1.1rem;
+    background: var(--color-border-strong);
+}
+
+.graph-edge-confidence,
+.graph-connection-explanation {
+    color: var(--color-text-muted);
+    font-size: 0.85rem;
+}
+
+.graph-connection-explanation {
+    margin-bottom: 0;
+}
+
+/* Causal relationship cards */
+
+.causal-link-card {
+    margin-top: 0.85rem;
+    padding: 1rem;
+    border: 1px solid var(--color-border);
+    border-radius: 0.65rem;
+}
+
+.causal-link-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+}
+
+.causal-relation-label {
+    display: inline-block;
+    font-weight: 650;
+    text-transform: uppercase;
+    letter-spacing: 0.035em;
+}
+
+.causal-confidence {
+    text-align: right;
+}
+
+.causal-confidence strong {
+    display: block;
+    font-size: 1.15rem;
+}
+
+.causal-flow {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    align-items: center;
+    gap: 0.85rem;
+    margin: 1rem 0;
+}
+
+.causal-flow-node {
+    display: grid;
+    align-content: start;
+    gap: 0.35rem;
+    min-width: 0;
+    padding: 0.8rem;
+    border: 1px solid var(--color-border);
+    border-radius: 0.5rem;
+}
+
+.causal-flow-node code {
+    overflow-wrap: anywhere;
+}
+
+.causal-flow-arrow {
+    display: grid;
+    justify-items: center;
+    gap: 0.25rem;
+    color: var(--color-text-muted);
+    font-size: 0.8rem;
+    text-align: center;
+}
+
+.causal-flow-arrow [aria-hidden="true"] {
+    font-size: 1.3rem;
+}
+
+.causal-empty-state {
+    padding: 1rem 0;
+}
+
+@media (max-width: 760px) {
+
+    .finding-summary-strip,
+    .graph-summary {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .causal-flow {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .causal-flow-arrow {
+        padding: 0.25rem 0;
+    }
+
+    .causal-flow-arrow [aria-hidden="true"] {
+        transform: rotate(90deg);
+    }
+}
+
+/* ==========================================================
+   Theme toggle
+   ========================================================== */
+
+.topbar-right {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 16px;
+    min-width: 0;
+}
+
+.theme-toggle {
+    appearance: none;
+    -webkit-appearance: none;
+
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+
+    min-height: 38px;
+    padding: 0 13px;
+
+    border: 1px solid var(--color-border-strong);
+    border-radius: 9px;
+
+    background: var(--color-surface);
+    color: var(--color-text);
+
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 650;
+    line-height: 1;
+    white-space: nowrap;
+
+    cursor: pointer;
+    box-shadow: var(--shadow-sm);
+
+    transition:
+        background-color 160ms ease,
+        color 160ms ease,
+        border-color 160ms ease,
+        box-shadow 160ms ease;
+}
+
+.theme-toggle:hover {
+    background: var(--color-surface-hover);
+    border-color: var(--color-primary);
+}
+
+.theme-toggle:active {
+    transform: translateY(1px);
+}
+
+.theme-toggle:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 3px;
+}
+
+.theme-toggle-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+    line-height: 1;
+}
+
+.theme-toggle-label {
+    display: inline-block;
+}
+
+/* Ensure the dark theme styles the actual application shell */
+:root[data-theme="dark"] body,
+:root[data-theme="dark"] .app-shell,
+:root[data-theme="dark"] .main-area {
+    background-color: var(--color-bg);
+    color: var(--color-text);
+}
+
+:root[data-theme="dark"] .sidebar {
+    background-color: var(--color-sidebar);
+    border-color: var(--color-border);
+}
+
+:root[data-theme="dark"] .topbar {
+    background-color: var(--color-topbar);
+    border-color: var(--color-border);
+}
+
+:root[data-theme="dark"] .theme-toggle {
+    background-color: var(--color-surface);
+    color: var(--color-text);
+    border-color: var(--color-border-strong);
+}
+
+:root[data-theme="dark"] .theme-toggle:hover {
+    background-color: var(--color-surface-hover);
+    border-color: var(--color-primary);
+}
+
+@media (max-width: 640px) {
+    .topbar-right {
+        gap: 8px;
+    }
+
+    .theme-toggle {
+        min-width: 38px;
+        padding: 0 9px;
+    }
+}
+
+@media (max-width: 420px) {
+    .theme-toggle-label {
+        display: none;
+    }
+}
+
+/* .theme-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 36px;
+    padding: 0 12px;
+
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--radius-md);
+
+    background: var(--color-surface);
+    color: var(--color-text);
+
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.theme-toggle:hover {
+    background: var(--color-surface-hover);
+}
+
+.theme-toggle-icon {
+    font-size: 16px;
+    line-height: 1;
+}
+
+@media (max-width: 480px) {
+    .theme-toggle-label {
+        display: none;
+    }
+
+    .theme-toggle {
+        width: 38px;
+        padding: 0;
+    }
+} */
+
+
+/* ==========================================================
+   Theme-aware component colours
+   Keep this section at the END of dashboard.css
+   ========================================================== */
+
+/* ---------- Semantic surface and contrast tokens ---------- */
+
+:root {
+    color-scheme: light;
+
+    --color-bg: #f4f7fb;
+    --color-surface: #ffffff;
+    --color-surface-muted: #f7f9fc;
+    --color-surface-hover: #eef3f9;
+    --color-surface-raised: #ffffff;
+    --color-surface-inset: #edf2f8;
+    --color-surface-overlay: rgba(255, 255, 255, 0.96);
+
+    --color-border: #e1e7f0;
+    --color-border-strong: #c6d1df;
+
+    --color-text: #17243a;
+    --color-text-muted: #5f6f85;
+    --color-text-subtle: #8795a8;
+    --color-text-inverse: #ffffff;
+
+    --color-primary: #315fce;
+    --color-primary-dark: #244ba8;
+    --color-primary-soft: #eaf0ff;
+
+    --color-success: #16805d;
+    --color-success-soft: #e6f6ef;
+
+    --color-warning: #a96508;
+    --color-warning-soft: #fff3d9;
+
+    --color-danger: #c43d4b;
+    --color-danger-soft: #ffebed;
+
+    --color-info: #1675a8;
+    --color-info-soft: #e5f4fc;
+
+    --color-sidebar: #ffffff;
+    --color-topbar: rgba(255, 255, 255, 0.92);
+
+    /* Component-specific surfaces */
+    --color-card: var(--color-surface);
+    --color-card-header: var(--color-surface-muted);
+    --color-table-header: var(--color-surface-muted);
+    --color-table-row-hover: var(--color-surface-hover);
+    --color-input-bg: var(--color-surface);
+    --color-input-text: var(--color-text);
+    --color-input-placeholder: var(--color-text-subtle);
+    --color-code-bg: #f0f3f8;
+    --color-code-text: #263955;
+    --color-divider: var(--color-border);
+
+    /* Timeline and graph */
+    --color-timeline-line: var(--color-border-strong);
+    --color-graph-node: var(--color-surface);
+    --color-graph-edge: var(--color-text-subtle);
+
+    /* Compatibility aliases */
+    --border-color: var(--color-border);
+    --card-background: var(--color-surface);
+    --muted-text: var(--color-text-muted);
+}
+
+:root[data-theme="dark"] {
+    color-scheme: dark;
+
+    --color-bg: #0d1422;
+    --color-surface: #151f30;
+    --color-surface-muted: #1a2639;
+    --color-surface-hover: #223149;
+    --color-surface-raised: #1b293e;
+    --color-surface-inset: #101a2a;
+    --color-surface-overlay: rgba(17, 26, 41, 0.97);
+
+    --color-border: #2a3950;
+    --color-border-strong: #3b4d66;
+
+    --color-text: #e8eef8;
+    --color-text-muted: #b0bdd0;
+    --color-text-subtle: #98a8be;
+    --color-text-inverse: #101827;
+
+    --color-primary: #8aafff;
+    --color-primary-dark: #b0c8ff;
+    --color-primary-soft: #23365b;
+
+    --color-success: #5bd5a2;
+    --color-success-soft: #173d34;
+
+    --color-warning: #f4c16b;
+    --color-warning-soft: #44351f;
+
+    --color-danger: #ff8994;
+    --color-danger-soft: #48252f;
+
+    --color-info: #77cafa;
+    --color-info-soft: #19394d;
+
+    --color-sidebar: #111a29;
+    --color-topbar: rgba(17, 26, 41, 0.94);
+
+    --color-card: var(--color-surface);
+    --color-card-header: var(--color-surface-muted);
+    --color-table-header: var(--color-surface-muted);
+    --color-table-row-hover: var(--color-surface-hover);
+    --color-input-bg: var(--color-surface-inset);
+    --color-input-text: var(--color-text);
+    --color-input-placeholder: var(--color-text-subtle);
+    --color-code-bg: #101a2a;
+    --color-code-text: #d6e2f5;
+    --color-divider: var(--color-border);
+
+    --color-timeline-line: var(--color-border-strong);
+    --color-graph-node: var(--color-surface-raised);
+    --color-graph-edge: var(--color-text-subtle);
+
+    /* Preserve existing variable names */
+    --border-color: var(--color-border);
+    --card-background: var(--color-surface);
+    --muted-text: var(--color-text-muted);
+}
+
+/* ---------- Application shell ---------- */
+
+html,
+body {
+    background-color: var(--color-bg);
+    color: var(--color-text);
+}
+
+body,
+.app-shell,
+.main-area,
+.page-content {
+    background-color: var(--color-bg);
+    color: var(--color-text);
+}
+
+.sidebar {
+    background-color: var(--color-sidebar);
+    color: var(--color-text);
+    border-color: var(--color-border);
+}
+
+.sidebar-brand-title,
+.sidebar-section-label,
+.sidebar-nav-label,
+.sidebar-footer-title {
+    color: var(--color-text);
+}
+
+.sidebar-brand-subtitle,
+.sidebar-footer-text {
+    color: var(--color-text-muted);
+}
+
+.sidebar-nav-link {
+    color: var(--color-text-muted);
+}
+
+.sidebar-nav-link:hover {
+    background-color: var(--color-surface-hover);
+    color: var(--color-text);
+}
+
+.sidebar-nav-link.active {
+    background-color: var(--color-primary-soft);
+    color: var(--color-primary);
+}
+
+.topbar {
+    background-color: var(--color-topbar);
+    color: var(--color-text);
+    border-color: var(--color-border);
+}
+
+.topbar-page-label {
+    color: var(--color-text);
+}
+
+.sidebar,
+.topbar {
+    border-color: var(--color-border);
+}
+
+/* ---------- Cards and evidence panels ---------- */
+
+.card,
+.metric-card,
+.overview-stat-card,
+.correlation-card,
+.evidence-card,
+.evidence-panel,
+.tenant-card,
+.finding-card,
+.timeline-card,
+.detail-panel,
+.panel,
+.content-panel,
+.stat-card {
+    background-color: var(--color-card);
+    color: var(--color-text);
+    border-color: var(--color-border);
+    box-shadow: var(--shadow-sm);
+}
+
+.card-header,
+.panel-header,
+.evidence-panel-header,
+.finding-card-header {
+    background-color: var(--color-card-header);
+    color: var(--color-text);
+    border-color: var(--color-border);
+}
+
+.card-title,
+.panel-title,
+.metric-label,
+.metric-value,
+.stat-value,
+.evidence-title,
+.finding-title {
+    color: var(--color-text);
+}
+
+.card p,
+.card span,
+.panel p,
+.evidence-panel p {
+    border-color: inherit;
+}
+
+.text-muted,
+.muted,
+.help-text,
+.form-text,
+.metric-description,
+.card-description {
+    color: var(--color-text-muted);
+}
+
+/* ---------- Buttons ---------- */
+
+button,
+.btn,
+.btn-secondary,
+.btn-outline,
+.btn-default {
+    transition:
+        background-color 160ms ease,
+        color 160ms ease,
+        border-color 160ms ease,
+        box-shadow 160ms ease;
+}
+
+.btn-secondary,
+.btn-outline,
+.btn-default {
+    background-color: var(--color-surface);
+    color: var(--color-text);
+    border-color: var(--color-border-strong);
+}
+
+.btn-secondary:hover,
+.btn-outline:hover,
+.btn-default:hover {
+    background-color: var(--color-surface-hover);
+    color: var(--color-text);
+    border-color: var(--color-primary);
+}
+
+.btn-primary {
+    background-color: var(--color-primary);
+    color: var(--color-text-inverse);
+    border-color: var(--color-primary);
+}
+
+.btn-primary:hover {
+    background-color: var(--color-primary-dark);
+    color: var(--color-text-inverse);
+}
+
+/* Explicit theme-toggle colours */
+.theme-toggle {
+    background-color: var(--color-surface);
+    color: var(--color-text);
+    border-color: var(--color-border-strong);
+}
+
+.theme-toggle:hover {
+    background-color: var(--color-surface-hover);
+    color: var(--color-text);
+    border-color: var(--color-primary);
+}
+
+/* ---------- Tables ---------- */
+
+.data-table,
+table {
+    color: var(--color-text);
+    border-color: var(--color-border);
+}
+
+.data-table th,
+table th {
+    background-color: var(--color-table-header);
+    color: var(--color-text);
+    border-color: var(--color-border);
+}
+
+.data-table td,
+table td {
+    background-color: var(--color-surface);
+    color: var(--color-text);
+    border-color: var(--color-border);
+}
+
+.data-table tbody tr:hover td,
+table tbody tr:hover td {
+    background-color: var(--color-table-row-hover);
+}
+
+.data-table caption {
+    color: var(--color-text-muted);
+}
+
+/* ---------- Forms and filters ---------- */
+
+input,
+select,
+textarea,
+.form-control {
+    background-color: var(--color-input-bg);
+    color: var(--color-input-text);
+    border-color: var(--color-border-strong);
+}
+
+input::placeholder,
+textarea::placeholder,
+.form-control::placeholder {
+    color: var(--color-input-placeholder);
+    opacity: 1;
+}
+
+input:focus,
+select:focus,
+textarea:focus,
+.form-control:focus {
+    background-color: var(--color-input-bg);
+    color: var(--color-input-text);
+    border-color: var(--color-primary);
+    outline-color: var(--color-primary);
+}
+
+option {
+    background-color: var(--color-surface);
+    color: var(--color-text);
+}
+
+/* ---------- Status indicators and badges ---------- */
+
+.badge-success,
+.status-success,
+.status-live {
+    background-color: var(--color-success-soft);
+    color: var(--color-success);
+    border-color: var(--color-border);
+}
+
+.badge-warning,
+.status-warning,
+.status-stale {
+    background-color: var(--color-warning-soft);
+    color: var(--color-warning);
+    border-color: var(--color-border);
+}
+
+.badge-danger,
+.status-danger,
+.status-unavailable {
+    background-color: var(--color-danger-soft);
+    color: var(--color-danger);
+    border-color: var(--color-border);
+}
+
+.badge-info,
+.status-info {
+    background-color: var(--color-info-soft);
+    color: var(--color-info);
+    border-color: var(--color-border);
+}
+
+.system-status {
+    color: var(--color-text-muted);
+}
+
+.system-status-dot {
+    flex-shrink: 0;
+}
+
+/* ---------- Timeline ---------- */
+
+.timeline,
+.timeline-container {
+    color: var(--color-text);
+}
+
+.timeline::before,
+.timeline-container::before,
+.timeline-line {
+    background-color: var(--color-timeline-line);
+}
+
+.timeline-item,
+.timeline-event {
+    color: var(--color-text);
+}
+
+.timeline-item-content,
+.timeline-content,
+.timeline-event-card {
+    background-color: var(--color-card);
+    color: var(--color-text);
+    border-color: var(--color-border);
+}
+
+.timeline-date,
+.timeline-time,
+.timeline-meta {
+    color: var(--color-text-muted);
+}
+
+/* ---------- Correlation findings and causal relationships ---------- */
+
+.correlation-card,
+.correlation-result,
+.correlation-finding,
+.finding-card,
+.causal-relationship,
+.causal-edge-details {
+    background-color: var(--color-card);
+    color: var(--color-text);
+    border-color: var(--color-border);
+}
+
+.correlation-card h1,
+.correlation-card h2,
+.correlation-card h3,
+.correlation-result h1,
+.correlation-result h2,
+.correlation-result h3,
+.finding-card h1,
+.finding-card h2,
+.finding-card h3 {
+    color: var(--color-text);
+}
+
+.correlation-score,
+.finding-score {
+    color: var(--color-primary);
+}
+
+.correlation-meta,
+.finding-meta,
+.causal-description {
+    color: var(--color-text-muted);
+}
+
+.causal-relationship {
+    border-left-color: var(--color-primary);
+}
+
+/* ---------- Graph and graph nodes ---------- */
+
+.evidence-graph,
+.correlation-graph,
+.graph-container {
+    background-color: var(--color-bg);
+    color: var(--color-text);
+    border-color: var(--color-border);
+}
+
+.graph-node,
+.evidence-graph-node,
+.correlation-graph-node {
+    fill: var(--color-graph-node);
+    color: var(--color-text);
+    border-color: var(--color-border-strong);
+}
+
+.graph-edge,
+.evidence-graph-edge,
+.correlation-graph-edge {
+    stroke: var(--color-graph-edge);
+}
+
+/*
+   SVG text and shapes may use their own attributes or inline styles.
+   Use CSS variables in the graph-rendering code where possible.
+*/
+
+/* ---------- Code, provenance and hash displays ---------- */
+
+code,
+pre,
+.code-block,
+.hash-value,
+.provenance-block {
+    background-color: var(--color-code-bg);
+    color: var(--color-code-text);
+    border-color: var(--color-border);
+}
+
+hr,
+.divider {
+    border-color: var(--color-divider);
+}
+
+/* ---------- Links and general text ---------- */
+
+a {
+    color: var(--color-primary);
+}
+
+a:hover {
+    color: var(--color-primary-dark);
+}
+
+small,
+small.text-muted {
+    color: var(--color-text-muted);
+}
+
+/* ---------- Smooth theme transitions ---------- */
+
+body,
+.app-shell,
+.sidebar,
+.topbar,
+.page-content,
+.card,
+.metric-card,
+.overview-stat-card,
+.correlation-card,
+.evidence-card,
+.evidence-panel,
+.tenant-card,
+.finding-card,
+.timeline-card,
+.data-table th,
+.data-table td,
+button,
+.btn,
+input,
+select,
+textarea {
+    transition:
+        background-color 160ms ease,
+        border-color 160ms ease,
+        color 160ms ease,
+        box-shadow 160ms ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+    *,
+    *::before,
+    *::after {
+        transition-duration: 0.01ms !important;
+        animation-duration: 0.01ms !important;
+    }
 }

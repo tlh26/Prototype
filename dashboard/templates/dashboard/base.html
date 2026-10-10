@@ -1,289 +1,272 @@
 {% load static %}
-
 <!DOCTYPE html>
-
 <html lang="en">
 
 <head>
-
-    
     <meta charset="utf-8">
-
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
-    <title>
+    <title>{% block title %}Evidence Correlation Platform{% endblock %}</title>
 
-        {% block title %}
-        Evidence Correlation Platform
-        {% endblock %}
-
-    </title>
-
+    <!-- Load the dashboard stylesheet -->
     <link rel="stylesheet" href="{% static 'dashboard/css/dashboard.css' %}">
+
+    <!--
+        Apply the saved theme before the page renders to minimise
+        the flash between light and dark themes.
+    -->
+    <script>
+        (function () {
+            "use strict";
+
+            const storageKey = "evidence-dashboard-theme";
+            let theme = "light";
+
+            try {
+                const savedTheme = localStorage.getItem(storageKey);
+
+                if (savedTheme === "light" || savedTheme === "dark") {
+                    theme = savedTheme;
+                } else if (
+                    window.matchMedia &&
+                    window.matchMedia("(prefers-color-scheme: dark)").matches
+                ) {
+                    theme = "dark";
+                }
+            } catch (error) {
+                // Browser storage may be unavailable.
+                // The dashboard will still work using the light theme.
+            }
+
+            document.documentElement.dataset.theme = theme;
+        })();
+    </script>
 
     {% block extra_css %}{% endblock %}
 </head>
-<body>
-    <div class="app-shell">  
-        <!-- ======================================================
-     Sidebar
-     ====================================================== -->
 
+<body>
+    <div class="app-shell">
+
+        <!-- Sidebar -->
         <aside class="sidebar">
 
             <div class="sidebar-brand">
-
-                <div class="sidebar-brand-mark">
-                    EC
-                </div>
+                <div class="sidebar-brand-mark">EC</div>
 
                 <div class="sidebar-brand-text">
-                    <p class="sidebar-brand-title">
-                        Evidence Correlation
-                    </p>
-                    <p class="sidebar-brand-subtitle">
-                        Research Platform
-                    </p>
+                    <p class="sidebar-brand-title">Evidence Correlation</p>
+                    <p class="sidebar-brand-subtitle">Research Platform</p>
                 </div>
             </div>
+
             <nav class="sidebar-nav">
+
+                <!-- Investigation -->
                 <div class="sidebar-section">
-                    <div class="sidebar-section-label">
-                        Investigation
-                    </div>
+                    <div class="sidebar-section-label">Investigation</div>
+
                     <ul class="sidebar-nav-list">
                         <li class="sidebar-nav-item">
                             <a href="{% url 'dashboard:index' %}"
                                 class="sidebar-nav-link {% if request.resolver_match.url_name == 'index' %}active{% endif %}">
-                                <span class="sidebar-nav-icon">
-                                    ◉
-                                </span>
-
-                                <span class="sidebar-nav-label">
-                                    Overview
-                                </span>
+                                <span class="sidebar-nav-icon" aria-hidden="true">◉</span>
+                                <span class="sidebar-nav-label">Overview</span>
                             </a>
                         </li>
-                        <li class="sidebar-nav-item">
 
+                        <li class="sidebar-nav-item">
                             <a href="{% url 'dashboard:tenants' %}"
                                 class="sidebar-nav-link {% if request.resolver_match.url_name == 'tenants' %}active{% endif %}">
-
-                                <span class="sidebar-nav-icon">
-                                    ▦
-                                </span>
-
-                                <span class="sidebar-nav-label">
-                                    Tenants
-                                </span>
-
+                                <span class="sidebar-nav-icon" aria-hidden="true">▦</span>
+                                <span class="sidebar-nav-label">Tenants</span>
                             </a>
-
                         </li>
 
-
                         <li class="sidebar-nav-item">
-
                             <a href="{% url 'dashboard:evidence' %}"
                                 class="sidebar-nav-link {% if request.resolver_match.url_name == 'evidence' or request.resolver_match.url_name == 'evidence_detail' %}active{% endif %}">
-
-                                <span class="sidebar-nav-icon">
-                                    ◫
-                                </span>
-                                <span class="sidebar-nav-label">
-                                    Evidence
-                                </span>
+                                <span class="sidebar-nav-icon" aria-hidden="true">◫</span>
+                                <span class="sidebar-nav-label">Evidence</span>
                             </a>
                         </li>
-                        <li class="sidebar-nav-item">
 
+                        <li class="sidebar-nav-item">
                             <a href="{% url 'dashboard:timeline' %}"
                                 class="sidebar-nav-link {% if request.resolver_match.url_name == 'timeline' %}active{% endif %}">
-                                <span class="sidebar-nav-icon">
-                                    ─
-                                </span>
-                                <span class="sidebar-nav-label">
-                                    Timeline
-                                </span>
+                                <span class="sidebar-nav-icon" aria-hidden="true">─</span>
+                                <span class="sidebar-nav-label">Timeline</span>
                             </a>
                         </li>
+
                         <li class="sidebar-nav-item">
                             <a href="{% url 'dashboard:correlations' %}"
                                 class="sidebar-nav-link {% if request.resolver_match.url_name == 'correlations' %}active{% endif %}">
-
-                                <span class="sidebar-nav-icon">
-                                    ⤢
-                                </span>
-
-                                <span class="sidebar-nav-label">
-                                    Correlations
-                                </span>
+                                <span class="sidebar-nav-icon" aria-hidden="true">⤢</span>
+                                <span class="sidebar-nav-label">Correlations</span>
                             </a>
                         </li>
                     </ul>
-
                 </div>
 
-
-                <!-- ==================================================
-             Platform
-             ================================================== -->
-
+                <!-- Platform -->
                 <div class="sidebar-section">
-
-                    <div class="sidebar-section-label">
-                        Platform
-                    </div>
+                    <div class="sidebar-section-label">Platform</div>
 
                     <ul class="sidebar-nav-list">
-
                         <li class="sidebar-nav-item">
-
                             <span class="sidebar-nav-link">
-
-                                <span class="sidebar-nav-icon">
-                                    ●
-                                </span>
-
-                                <span class="sidebar-nav-label">
-                                    Central Store
-                                </span>
-
+                                <span class="sidebar-nav-icon" aria-hidden="true">●</span>
+                                <span class="sidebar-nav-label">Central Store</span>
 
                                 {% if central_available is True %}
-
-                                <span class="badge badge-success">
-                                    Live
-                                </span>
-
+                                <span class="badge badge-success">Live</span>
                                 {% elif central_available is False and using_last_known_data %}
-
-                                <span class="badge badge-warning">
-                                    Last known
-                                </span>
-
+                                <span class="badge badge-warning">Last known</span>
                                 {% elif central_available is False %}
-
-                                <span class="badge badge-danger">
-                                    Unavailable
-                                </span>
-
+                                <span class="badge badge-danger">Unavailable</span>
                                 {% else %}
-
-                                <span class="badge">
-                                    Unknown
-                                </span>
-
+                                <span class="badge">Unknown</span>
                                 {% endif %}
-
                             </span>
-
                         </li>
-
                     </ul>
-
                 </div>
 
             </nav>
 
-
             <div class="sidebar-footer">
-
-                <p class="sidebar-footer-title">
-                    Evidence Correlation Platform
-                </p>
-
-                <p class="sidebar-footer-text">
-                    Research Prototype
-                </p>
-
+                <p class="sidebar-footer-title">Evidence Correlation Platform</p>
+                <p class="sidebar-footer-text">Research Prototype</p>
             </div>
 
         </aside>
 
-
-        <!-- ======================================================
-     Main area
-     ====================================================== -->
-
+        <!-- Main application area -->
         <div class="main-area">
 
-
             <!-- Topbar -->
-
             <header class="topbar">
-
                 <div class="topbar-left">
-
                     <span class="topbar-page-label">
-
                         {% block topbar_title %}
-
                         Evidence Correlation Dashboard
-
                         {% endblock %}
-
                     </span>
-
                 </div>
-
 
                 <div class="topbar-right">
 
+                    <!-- Theme toggle -->
+                    <button type="button" class="theme-toggle" id="theme-toggle" aria-label="Switch to dark theme"
+                        aria-pressed="false" title="Switch theme">
+                        <span class="theme-toggle-icon" aria-hidden="true">☾</span>
+                        <span class="theme-toggle-label">Dark mode</span>
+                    </button>
+
+                    <!-- Central Store status -->
                     <span class="system-status">
-
                         {% if central_available is True %}
-
                         <span class="system-status-dot system-status-dot-live"></span>
-
                         Central Store · Live
-
                         {% elif central_available is False and using_last_known_data %}
-
                         <span class="system-status-dot system-status-dot-stale"></span>
-
                         Central Store · Last known
-
                         {% elif central_available is False %}
-
                         <span class="system-status-dot system-status-dot-unavailable"></span>
-
                         Central Store · Unavailable
-
                         {% else %}
-
                         <span class="system-status-dot system-status-dot-unknown"></span>
-
                         Central Store · Unknown
-
                         {% endif %}
-
                     </span>
 
                 </div>
-
             </header>
 
-
             <!-- Page content -->
-
             <main class="page-content">
+                {% block breadcrumbs %}{% endblock %}
 
-                {% block breadcrumbs %}
-                {% endblock %}
-
-
-                {% block content %}
-                {% endblock %}
-
+                {% block content %}{% endblock %}
             </main>
 
         </div>
-        
-
     </div>
 
-    {% block extra_js %}
-    {% endblock %}
+    <!--
+        Theme toggle logic.
+
+        This script is intentionally placed after the application markup
+        so that the button exists before its event listener is registered.
+    -->
+    <script>
+        (function () {
+            "use strict";
+
+            const storageKey = "evidence-dashboard-theme";
+            const root = document.documentElement;
+            const button = document.getElementById("theme-toggle");
+
+            if (!button) {
+                return;
+            }
+
+            const icon = button.querySelector(".theme-toggle-icon");
+            const label = button.querySelector(".theme-toggle-label");
+
+            function applyTheme(theme) {
+                const normalisedTheme = theme === "dark" ? "dark" : "light";
+                const isDark = normalisedTheme === "dark";
+
+                // Update the root attribute used by dashboard.css.
+                root.dataset.theme = normalisedTheme;
+
+                // Keep the button accessible and synchronised with the theme.
+                button.setAttribute("aria-pressed", String(isDark));
+
+                const accessibleLabel = isDark
+                    ? "Switch to light theme"
+                    : "Switch to dark theme";
+
+                button.setAttribute("aria-label", accessibleLabel);
+                button.setAttribute("title", accessibleLabel);
+
+                if (icon) {
+                    icon.textContent = isDark ? "☀" : "☾";
+                }
+
+                if (label) {
+                    label.textContent = isDark ? "Light mode" : "Dark mode";
+                }
+            }
+
+            button.addEventListener("click", function () {
+                const currentTheme = root.dataset.theme === "dark"
+                    ? "dark"
+                    : "light";
+
+                const nextTheme = currentTheme === "dark"
+                    ? "light"
+                    : "dark";
+
+                // Change the theme immediately, even if storage is unavailable.
+                applyTheme(nextTheme);
+
+                try {
+                    localStorage.setItem(storageKey, nextTheme);
+                } catch (error) {
+                    // The current page still changes theme.
+                    // Persistence will be unavailable until storage works.
+                }
+            });
+
+            // Synchronise the button with the theme set in the document head.
+            applyTheme(root.dataset.theme);
+        })();
+    </script>
+
+    {% block extra_js %}{% endblock %}
 </body>
+
 </html>

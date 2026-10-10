@@ -11,12 +11,14 @@ from correlation.entities import EntityExtractor
 from correlation.normaliser import EvidenceNormaliser
 from correlation.relationships import RelationshipMapper
 from correlation.rules import SameTenantTemporalRule
+from dashboard.services.correlationPresentation import CorrelationPresentationAdapter
 from dashboard.services.evidence import EvidenceService
 from .correlation import CorrelationService
 from correlation.timeline import EvidenceTimeline
 from dashboard.services.timeline import TimelineService
 from dashboard.services.tenants import TenantService
 from dashboard.services.overview import OverviewService
+
 
 
 def _setting(name: str, default):
@@ -83,6 +85,7 @@ def build_correlation_service() -> CorrelationService:
         source=build_correlation_source(),
         engine=build_correlation_engine(),
         evidence_limit=evidence_limit,
+        presentation_adapter=CorrelationPresentationAdapter(),
     )
 
 @lru_cache(maxsize=1)

@@ -14,7 +14,7 @@ import psycopg
 from central.config import CentralConfig
 from central.database import get_connection
 from correlation.lastKnownEvidence import LastKnownEvidenceStore
-
+from evidenceAgent.evidenceAgent.models import EvidenceEvent
 
 class CentralEvidenceUnavailable(Exception):
     """Raised when the central evidence store cannot be reached."""
@@ -528,32 +528,65 @@ class PostgreSQLCorrelationSource:
             f"Unsupported raw_data type: {type(value)!r}"
         )
 
+    # @classmethod
+    # def _event_from_row(
+    #     cls,
+    #     row: dict[str, Any],
+    # ) -> Any:
+
+    #     details = row["details_json"]
+
+    #     if isinstance(details, str):
+    #         details = json.loads(details)
+
+    #     return SimpleNamespace(
+    #         event_id=row["event_id"],
+    #         tenant_id=row["tenant_id"],
+    #         instance_name=row["instance_name"],
+    #         evidence_type=SimpleNamespace(
+    #             value=row["evidence_type"],
+    #         ),
+    #         event_type=SimpleNamespace(
+    #             value=row["event_type"],
+    #         ),
+    #         timestamp=cls._parse_datetime(
+    #             row["timestamp"],
+    #         ),
+    #         created_at=cls._parse_datetime(
+    #             row["created_at"],
+    #         ),
+    #         actor=row["actor"],
+    #         uid=row["uid"],
+    #         resource=row["resource"],
+    #         source=row["source"],
+    #         source_path=row["source_path"],
+    #         details=details,
+    #         sequence=row["sequence"],
+    #         agent_id=row["agent_id"],
+    #         raw_data=cls._decode_raw_data(
+    #             row["raw_data"],
+    #         ),
+    #         sha256=row["sha256"],
+    #     )
+
     @classmethod
     def _event_from_row(
         cls,
         row: dict[str, Any],
-    ) -> Any:
-
+    ) -> EvidenceEvent:
         details = row["details_json"]
 
         if isinstance(details, str):
             details = json.loads(details)
 
-        return SimpleNamespace(
+        return EvidenceEvent(
             event_id=row["event_id"],
             tenant_id=row["tenant_id"],
             instance_name=row["instance_name"],
-            evidence_type=SimpleNamespace(
-                value=row["evidence_type"],
-            ),
-            event_type=SimpleNamespace(
-                value=row["event_type"],
-            ),
+            evidence_type=row["evidence_type"],
+            event_type=row["event_type"],
             timestamp=cls._parse_datetime(
                 row["timestamp"],
-            ),
-            created_at=cls._parse_datetime(
-                row["created_at"],
             ),
             actor=row["actor"],
             uid=row["uid"],
@@ -567,6 +600,9 @@ class PostgreSQLCorrelationSource:
                 row["raw_data"],
             ),
             sha256=row["sha256"],
+            created_at=cls._parse_datetime(
+                row["created_at"],
+            ),
         )
 
     @classmethod
@@ -605,27 +641,55 @@ class PostgreSQLCorrelationSource:
     # Cache adapters
     # ------------------------------------------------------------------
 
+    # @classmethod
+    # def _event_from_cache_payload(
+    #     cls,
+    #     payload: dict[str, Any],
+    # ) -> Any:
+
+    #     return SimpleNamespace(
+    #         event_id=payload["event_id"],
+    #         tenant_id=payload["tenant_id"],
+    #         instance_name=payload["instance_name"],
+    #         evidence_type=SimpleNamespace(
+    #             value=payload["evidence_type"],
+    #         ),
+    #         event_type=SimpleNamespace(
+    #             value=payload["event_type"],
+    #         ),
+    #         timestamp=cls._parse_datetime(
+    #             payload["timestamp"],
+    #         ),
+    #         created_at=cls._parse_datetime(
+    #             payload["created_at"],
+    #         ),
+    #         actor=payload["actor"],
+    #         uid=payload["uid"],
+    #         resource=payload["resource"],
+    #         source=payload["source"],
+    #         source_path=payload["source_path"],
+    #         details=payload["details"],
+    #         sequence=payload["sequence"],
+    #         agent_id=payload["agent_id"],
+    #         raw_data=cls._decode_raw_data(
+    #             payload["raw_data"],
+    #         ),
+    #         sha256=payload["sha256"],
+    #     )
+
     @classmethod
     def _event_from_cache_payload(
         cls,
         payload: dict[str, Any],
-    ) -> Any:
-
-        return SimpleNamespace(
+    ) -> EvidenceEvent:
+        return EvidenceEvent(
             event_id=payload["event_id"],
             tenant_id=payload["tenant_id"],
             instance_name=payload["instance_name"],
-            evidence_type=SimpleNamespace(
-                value=payload["evidence_type"],
-            ),
-            event_type=SimpleNamespace(
-                value=payload["event_type"],
-            ),
+            evidence_type=payload["evidence_type"],
+            event_type=payload["event_type"],
             timestamp=cls._parse_datetime(
                 payload["timestamp"],
-            ),
-            created_at=cls._parse_datetime(
-                payload["created_at"],
             ),
             actor=payload["actor"],
             uid=payload["uid"],
@@ -639,6 +703,9 @@ class PostgreSQLCorrelationSource:
                 payload["raw_data"],
             ),
             sha256=payload["sha256"],
+            created_at=cls._parse_datetime(
+                payload["created_at"],
+            ),
         )
 
     @classmethod
@@ -672,6 +739,26 @@ class PostgreSQLCorrelationSource:
             capture_id=payload["capture_id"],
             record_sha256=payload["record_sha256"],
         )
+
+    def check_central(self) -> bool:
+        """
+        Explicitly test whether the authoritative PostgreSQL store
+        is currently reachable.
+        """
+
+        try:
+            with get_connection(self.config) as connection:
+                connection.execute("SELECT 1").fetchone()
+
+        except Exception as exc:
+            if not self._is_connection_error(exc):
+                raise
+
+            self._mark_unavailable()
+            return False
+
+        self._mark_live()
+        return True
 
 
 # Backwards-compatible name while the codebase transitions.

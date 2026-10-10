@@ -21,10 +21,10 @@ class TimelineService:
         instance_name: str | None = None,
         limit: int | None = None,
     ):
-        result = self.correlation_service.correlate(
+        evidence = self.correlation_service.evidence(
             tenant_id=tenant_id,
             instance_name=instance_name,
             limit=limit,
         )
 
-        return self.timeline.build(list(result.evidence))
+        return self.timeline.build(list(evidence))

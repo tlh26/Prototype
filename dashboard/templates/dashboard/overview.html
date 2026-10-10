@@ -1,3 +1,4 @@
+<!-- dashboard/templates/dashboard/overview.html -->
 {% extends "dashboard/base.html" %}
 
 {% block title %}
@@ -349,5 +350,123 @@ Quick investigation actions
     </div>
 
 </div>
+
+<!-- Correlation execution summary -->
+<div class="metric-grid correlation-metrics">
+    <div class="card overview-stat-card">
+        <p class="overview-stat-label">Candidates evaluated</p>
+        <p class="overview-stat-value">
+            {% if overview %}
+            {{ overview.evaluated_candidate_count }}
+            {% else %}
+            —
+            {% endif %}
+        </p>
+        <p class="overview-stat-note">
+            Candidates passed to evaluation
+        </p>
+    </div>
+
+    <div class="card overview-stat-card">
+        <p class="overview-stat-label">Policy denials</p>
+        <p class="overview-stat-value">
+            {% if overview %}
+            {{ overview.policy_denied_count }}
+            {% else %}
+            —
+            {% endif %}
+        </p>
+        <p class="overview-stat-note">
+            Candidates denied by correlation policy
+        </p>
+    </div>
+
+    <div class="card overview-stat-card">
+        <p class="overview-stat-label">Causal relationships</p>
+        <p class="overview-stat-value">
+            {% if overview %}
+            {{ overview.causal_relationship_count }}
+            {% else %}
+            —
+            {% endif %}
+        </p>
+        <p class="overview-stat-note">
+            Supported causal links in returned findings
+        </p>
+    </div>
+
+    <div class="card overview-stat-card">
+        <p class="overview-stat-label">Analysis duration</p>
+        <p class="overview-stat-value">
+            {% if overview %}
+            {{ overview.duration_seconds|floatformat:3 }} s
+            {% else %}
+            —
+            {% endif %}
+        </p>
+        <p class="overview-stat-note">
+            Duration of the latest overview analysis
+        </p>
+    </div>
+</div>
+
+<!-- Correlation graph preview -->
+<div class="card mb-20">
+    <div class="card-header">
+        <div>
+            <h2 class="card-title">Evidence relationships</h2>
+            <p class="card-subtitle">
+                A partial view of evidence supporting findings
+                and causal relationships returned by the engine.
+            </p>
+        </div>
+        <a href="{% url 'dashboard:correlations' %}" class="btn btn-secondary">
+            Explore correlations
+        </a>
+    </div>
+
+    {% if overview and overview.correlation_presentation %}
+    {% with graph=overview.correlation_presentation.graph %}
+    <div class="graph-summary">
+        <div>
+            <span class="graph-summary-value">
+                {{ graph.evidence_node_count }}
+            </span>
+            <span class="graph-summary-label">Evidence nodes</span>
+        </div>
+        <div>
+            <span class="graph-summary-value">
+                {{ graph.finding_node_count }}
+            </span>
+            <span class="graph-summary-label">Finding nodes</span>
+        </div>
+        <div>
+            <span class="graph-summary-value">
+                {{ graph.edge_count }}
+            </span>
+            <span class="graph-summary-label">Displayed links</span>
+        </div>
+        <div>
+            <span class="graph-summary-value">
+                {{ graph.causal_edge_count }}
+            </span>
+            <span class="graph-summary-label">Causal links</span>
+        </div>
+    </div>
+
+    {% if graph.edges %}
+    {% include "dashboard/partials/correlation_graph.html" %}
+    {% else %}
+    <div class="empty-state">
+        <p class="empty-state-text">
+            No supported graph links are available
+            for this analysis.
+        </p>
+    </div>
+    {% endif %}
+    {% endwith %}
+    {% endif %}
+</div>
+
 
 {% endblock %}
