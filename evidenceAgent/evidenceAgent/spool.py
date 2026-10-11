@@ -41,22 +41,15 @@ class EvidenceSpool:
         """
 
         if isinstance(item, EvidenceEvent):
-            payload = item.model_dump(
-                mode="json"
-            )
+            payload = item.model_dump(mode="json")
             path = self.directory / self._event_filename(item)
 
         elif isinstance(item, EvidenceBatch):
-            payload = item.model_dump(
-                mode="json"
-            )
+            payload = item.model_dump(mode="json")
             path = self.directory / self._batch_filename(item)
 
         else:
-            raise TypeError(
-                f"Unsupported spool item type: "
-                f"{type(item).__name__}"
-            )
+            raise TypeError(f"Unsupported spool item type: " f"{type(item).__name__}")
 
         temporary_path = path.with_suffix(".tmp")
 
@@ -81,10 +74,7 @@ class EvidenceSpool:
         self,
         event: EvidenceEvent,
     ) -> str:
-        return (
-            f"{event.sequence:020d}_"
-            f"{event.event_id}.json"
-        )
+        return f"{event.sequence:020d}_" f"{event.event_id}.json"
 
     def _batch_filename(
         self,
@@ -102,15 +92,10 @@ class EvidenceSpool:
         else:
             sequence = 0
 
-        return (
-            f"{sequence:020d}_"
-            f"{batch.agent_id}.json"
-        )
+        return f"{sequence:020d}_" f"{batch.agent_id}.json"
 
     def pending(self) -> list[Path]:
-        return sorted(
-            self.directory.glob("*.json")
-        )
+        return sorted(self.directory.glob("*.json"))
 
     def load(
         self,
@@ -123,25 +108,15 @@ class EvidenceSpool:
         instance EvidenceEvent or a host EvidenceBatch.
         """
 
-        payload = json.loads(
-            path.read_text(
-                encoding="utf-8"
-            )
-        )
+        payload = json.loads(path.read_text(encoding="utf-8"))
 
         if "evidence" in payload:
-            return EvidenceBatch.model_validate(
-                payload
-            )
+            return EvidenceBatch.model_validate(payload)
 
-        return EvidenceEvent.model_validate(
-            payload
-        )
+        return EvidenceEvent.model_validate(payload)
 
     def remove(
         self,
         path: Path,
     ) -> None:
-        path.unlink(
-            missing_ok=True
-        )
+        path.unlink(missing_ok=True)

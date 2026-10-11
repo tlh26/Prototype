@@ -29,9 +29,7 @@ def make_event():
     )
 
 
-@patch(
-    "evidenceAgent.evidenceAgent.client.requests.post"
-)
+@patch("evidenceAgent.evidenceAgent.client.requests.post")
 def test_client_submits_event(mock_post):
     response = Mock()
     response.raise_for_status.return_value = None
@@ -48,35 +46,24 @@ def test_client_submits_event(mock_post):
 
     args, kwargs = mock_post.call_args
 
-    assert args[0] == (
-        "http://127.0.0.1:9443/"
-        "api/v1/evidence/events"
-    )
+    assert args[0] == ("http://127.0.0.1:9443/" "api/v1/evidence/events")
 
     assert kwargs["headers"]["X-API-Key"] == "test-key"
 
-    assert kwargs["headers"]["Content-Type"] == (
-        "application/json"
-    )
+    assert kwargs["headers"]["Content-Type"] == ("application/json")
 
     assert kwargs["timeout"] == 10
 
-    assert kwargs["json"]["raw_data"] == (
-        base64.b64encode(b"hello\n").decode("ascii")
-    )
+    assert kwargs["json"]["raw_data"] == (base64.b64encode(b"hello\n").decode("ascii"))
 
     response.raise_for_status.assert_called_once()
 
 
-@patch(
-    "evidenceAgent.evidenceAgent.client.requests.post"
-)
+@patch("evidenceAgent.evidenceAgent.client.requests.post")
 def test_client_propagates_http_error(mock_post):
     response = Mock()
 
-    response.raise_for_status.side_effect = (
-        RuntimeError("server error")
-    )
+    response.raise_for_status.side_effect = RuntimeError("server error")
 
     mock_post.return_value = response
 
@@ -112,28 +99,17 @@ def test_submit_batch_posts_to_batch_endpoint(
 
     args, kwargs = post.call_args
 
-    assert args[0] == (
-        "http://central:9443/"
-        "api/v1/evidence/batches"
-    )
+    assert args[0] == ("http://central:9443/" "api/v1/evidence/batches")
 
-    assert kwargs["headers"]["X-API-Key"] == (
-        "test-api-key"
-    )
+    assert kwargs["headers"]["X-API-Key"] == ("test-api-key")
 
-    assert kwargs["headers"]["Content-Type"] == (
-        "application/json"
-    )
+    assert kwargs["headers"]["Content-Type"] == ("application/json")
 
     assert kwargs["timeout"] == 10
 
-    assert kwargs["json"]["agent_id"] == (
-        sample_batch.agent_id
-    )
+    assert kwargs["json"]["agent_id"] == (sample_batch.agent_id)
 
-    assert len(kwargs["json"]["evidence"]) == (
-        len(sample_batch.evidence)
-    )
+    assert len(kwargs["json"]["evidence"]) == (len(sample_batch.evidence))
 
     response.raise_for_status.assert_called_once()
 
@@ -161,13 +137,10 @@ def test_submit_batch_does_not_double_encode_raw_data(
         persisted = next(
             item
             for item in payload["evidence"]
-            if item["evidence_id"]
-            == envelope.evidence_id
+            if item["evidence_id"] == envelope.evidence_id
         )
 
-        assert persisted["raw_data_b64"] == (
-            envelope.raw_data_b64
-        )
+        assert persisted["raw_data_b64"] == (envelope.raw_data_b64)
 
 
 def test_submit_batch_preserves_envelope_metadata(
@@ -191,24 +164,10 @@ def test_submit_batch_preserves_envelope_metadata(
     envelope = payload["evidence"][0]
     original = sample_batch.evidence[0]
 
-    assert envelope["evidence_id"] == (
-        original.evidence_id
-    )
-    assert envelope["tenant_id"] == (
-        original.tenant_id
-    )
-    assert envelope["instance_name"] == (
-        original.instance_name
-    )
-    assert envelope["sha256"] == (
-        original.sha256
-    )
-    assert envelope["size_bytes"] == (
-        original.size_bytes
-    )
-    assert envelope["sequence_start"] == (
-        original.sequence_start
-    )
-    assert envelope["sequence_end"] == (
-        original.sequence_end
-    )
+    assert envelope["evidence_id"] == (original.evidence_id)
+    assert envelope["tenant_id"] == (original.tenant_id)
+    assert envelope["instance_name"] == (original.instance_name)
+    assert envelope["sha256"] == (original.sha256)
+    assert envelope["size_bytes"] == (original.size_bytes)
+    assert envelope["sequence_start"] == (original.sequence_start)
+    assert envelope["sequence_end"] == (original.sequence_end)

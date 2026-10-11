@@ -1,0 +1,235 @@
+{% extends "dashboard/base.html" %}
+{% load dashboard_formatting %}
+
+{% block title %}
+Timeline · Evidence Correlation Platform
+{% endblock %}
+
+{% block topbar_title %}
+Timeline
+{% endblock %}
+
+{% block content %}
+
+<div class="section-header">
+
+    <div class="section-header-main">
+
+        <div class="breadcrumbs">
+            <span class="breadcrumb-current">
+                Timeline
+            </span>
+        </div>
+
+        <h1 class="section-title">
+            Timeline
+        </h1>
+
+        <p class="section-description">
+            Chronological sequence of timestamped evidence events.
+        </p>
+
+    </div>
+
+</div>
+
+{% include "dashboard/partials/central_status.html" %}
+
+
+<!-- {# ============================================================
+Filters
+============================================================ #} -->
+
+<div class="card filter-card">
+
+    <form method="get" class="filter-toolbar">
+
+        <div class="form-group filter-field">
+
+            <label for="tenant_id" class="form-label">
+                Tenant
+            </label>
+
+            <input id="tenant_id" name="tenant_id" type="text" class="form-control" value="{{ tenant_id|default:'' }}"
+                placeholder="All tenants">
+
+        </div>
+
+
+        <div class="form-group filter-field">
+
+            <label for="instance_name" class="form-label">
+                Instance
+            </label>
+
+            <input id="instance_name" name="instance_name" type="text" class="form-control"
+                value="{{ instance_name|default:'' }}" placeholder="All instances">
+
+        </div>
+
+
+        <div class="filter-actions">
+
+            <button type="submit" class="btn btn-primary">
+                Apply filters
+            </button>
+
+            <a href="{% url 'dashboard:timeline' %}" class="btn btn-secondary">
+                Clear
+            </a>
+
+        </div>
+
+    </form>
+
+</div>
+
+
+<div class="card">
+
+    <div class="card-body">
+
+        <div class="section-header">
+
+            <div class="section-header-main">
+
+                <h2 class="section-title">
+                    Evidence sequence
+                </h2>
+
+                <p class="section-description">
+                    Events are ordered chronologically using their
+                    recorded event timestamps.
+                </p>
+
+            </div>
+
+            {% if entries %}
+
+            <div class="section-header-meta">
+                {{ entries|length }}
+                event{{ entries|length|pluralize }}
+            </div>
+
+            {% endif %}
+
+        </div>
+
+<!-- 
+        {# --------------------------------------------------------
+        Central unavailable with no cached state
+        -------------------------------------------------------- #} -->
+
+        {% if central_available is False and not entries %}
+
+        <div class="empty-state">
+
+            <h3 class="empty-state-title">
+                Timeline unavailable
+            </h3>
+
+            <p class="empty-state-text">
+                The central evidence store cannot currently be reached,
+                and no previous timeline state is available.
+            </p>
+
+        </div>
+
+<!-- 
+        {# --------------------------------------------------------
+        No events, but Central is available
+        -------------------------------------------------------- #} -->
+
+        {% elif not entries %}
+
+        <div class="empty-state">
+
+            <h3 class="empty-state-title">
+                No timeline events
+            </h3>
+
+            <p class="empty-state-text">
+
+                {% if tenant_id or instance_name %}
+
+                No timestamped evidence events were found for
+                the selected scope.
+
+                {% else %}
+
+                No timestamped evidence events are currently
+                available.
+
+                {% endif %}
+
+            </p>
+
+
+            {% if tenant_id or instance_name %}
+
+            <a href="{% url 'dashboard:timeline' %}" class="btn btn-secondary">
+                Clear filters
+            </a>
+
+            {% endif %}
+
+        </div>
+
+<!-- 
+        {# --------------------------------------------------------
+        Timeline available
+        -------------------------------------------------------- #} -->
+
+        {% else %}
+
+        <div class="timeline-wrapper">
+
+            <div class="timeline">
+
+                {% for entry in entries %}
+
+                <article class="timeline-entry">
+                    <div class="timeline-time">
+                        {{ entry.timestamp|display_datetime }}
+                    </div>
+                    <div class="timeline-marker-column">
+                        <div class="timeline-marker timeline-marker-instance">
+                            ●
+                        </div>
+                    </div>
+                    <div class="timeline-content">
+                        <div class="timeline-title">
+                            {{ entry.evidence.instance_name|default:"Unknown instance" }}
+                        </div>
+                        <div class="timeline-description">
+                            {% if entry.evidence.event_type %}
+                            {{ entry.evidence.event_type|display_value }}
+                            {% elif entry.evidence.evidence_type %}
+                            {{ entry.evidence.evidence_type|display_value }}
+
+                            {% else %}
+                            Evidence event
+                            {% endif %}
+                        </div>
+                        <div class="timeline-meta">
+                            <span>
+                                {{ entry.evidence.tenant_id|default:"Unknown tenant" }}
+                            </span>
+                            <span>
+                                Instance evidence
+                            </span>
+                            {% if entry.evidence.event_id %}
+                            <a href="{% url 'dashboard:evidence_detail' entry.evidence.event_id %}">
+                                View evidence
+                            </a>
+                            {% endif %}
+                        </div>
+                    </div>
+                </article>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

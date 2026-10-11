@@ -16,9 +16,7 @@ def central_config(tmp_path):
     return CentralConfig(
         host="127.0.0.1",
         port=9443,
-        database_path=str(
-            tmp_path / "evidence.db"
-        ),
+        database_path=str(tmp_path / "evidence.db"),
         api_key="test-api-key",
     )
 
@@ -46,21 +44,14 @@ def api_key():
 
 @pytest.fixture
 def raw_data():
-    return (
-        b"Aug 31 14:00:00 web-b sshd[123]: "
-        b"Accepted password for appuser\n"
-    )
+    return b"Aug 31 14:00:00 web-b sshd[123]: " b"Accepted password for appuser\n"
 
 
 @pytest.fixture
 def evidence_payload(raw_data):
-    sha256 = hashlib.sha256(
-        raw_data
-    ).hexdigest()
+    sha256 = hashlib.sha256(raw_data).hexdigest()
 
-    encoded = base64.b64encode(
-        raw_data
-    ).decode("ascii")
+    encoded = base64.b64encode(raw_data).decode("ascii")
 
     return {
         "event_id": "event-001",
@@ -77,9 +68,7 @@ def evidence_payload(raw_data):
         "details": {
             "method": "password",
             "raw_line": (
-                "Aug 31 14:00:00 web-b "
-                "sshd[123]: Accepted password "
-                "for appuser\n"
+                "Aug 31 14:00:00 web-b " "sshd[123]: Accepted password " "for appuser\n"
             ),
         },
         "sequence": 1,

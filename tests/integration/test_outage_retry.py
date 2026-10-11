@@ -21,11 +21,7 @@ def test_failed_submission_keeps_spool_entry(
 
     transport = Mock()
 
-    transport.send.side_effect = (
-        RuntimeError(
-            "Central unavailable"
-        )
-    )
+    transport.send.side_effect = RuntimeError("Central unavailable")
 
     # Act
     # Run relay against pending spool.

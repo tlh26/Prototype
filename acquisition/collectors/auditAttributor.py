@@ -3,10 +3,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
-
-_INCUS_SUBJECT_RE = re.compile(
-    rb"\bsubj=incus-(tenant-[a-z0-9-]+)_([a-z0-9-]+)_"
-)
+_INCUS_SUBJECT_RE = re.compile(rb"\bsubj=incus-(tenant-[a-z0-9-]+)_([a-z0-9-]+)_")
 
 
 @dataclass(frozen=True)
@@ -51,9 +48,7 @@ class IncusAuditAttributor:
         self,
         raw_data: bytes,
     ) -> AuditAttribution:
-        match = _INCUS_SUBJECT_RE.search(
-            raw_data
-        )
+        match = _INCUS_SUBJECT_RE.search(raw_data)
 
         if not match:
             return AuditAttribution(

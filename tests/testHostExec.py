@@ -38,9 +38,7 @@ class FakeHostExecutor(HostExecutor):
 
 def test_audit_collector_uses_host_ausearch():
 
-    raw = Path(
-        "tests/fixtures/audit_web_b.txt"
-    ).read_bytes()
+    raw = Path("tests/fixtures/audit_web_b.txt").read_bytes()
 
     executor = FakeHostExecutor(raw)
 
@@ -51,9 +49,7 @@ def test_audit_collector_uses_host_ausearch():
     tenant = TenantContext(
         tenant_id="tenant-b",
         tenant_name="Tenant B",
-        tenant_hash=HashingService().sha256(
-            b"tenant-b"
-        ),
+        tenant_hash=HashingService().sha256(b"tenant-b"),
         platform="incus",
         platform_project_id="tenant-b",
     )

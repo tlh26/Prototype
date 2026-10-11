@@ -56,9 +56,7 @@ class EvidenceEvent(BaseModel):
     source: str
     source_path: str | None = None
 
-    details: dict[str, Any] = Field(
-        default_factory=dict
-    )
+    details: dict[str, Any] = Field(default_factory=dict)
 
     sequence: int
     agent_id: str

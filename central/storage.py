@@ -28,14 +28,10 @@ class RawEvidenceStore:
         expected_sha256: str,
     ) -> tuple[str, str]:
 
-        calculated = hashlib.sha256(
-            raw_data
-        ).hexdigest()
+        calculated = hashlib.sha256(raw_data).hexdigest()
 
         if calculated != expected_sha256:
-            raise ValueError(
-                "Raw evidence SHA-256 mismatch"
-            )
+            raise ValueError("Raw evidence SHA-256 mismatch")
 
         object_key = (
             f"evidence/"
@@ -45,13 +41,7 @@ class RawEvidenceStore:
             f"{calculated}"
         )
 
-        destination = (
-            self.root
-            / tenant_id
-            / instance_name
-            / evidence_type
-            / calculated
-        )
+        destination = self.root / tenant_id / instance_name / evidence_type / calculated
 
         destination.parent.mkdir(
             parents=True,
@@ -62,28 +52,18 @@ class RawEvidenceStore:
 
             existing = destination.read_bytes()
 
-            existing_hash = hashlib.sha256(
-                existing
-            ).hexdigest()
+            existing_hash = hashlib.sha256(existing).hexdigest()
 
             if existing_hash != calculated:
-                raise RuntimeError(
-                    "Existing evidence object failed integrity check"
-                )
+                raise RuntimeError("Existing evidence object failed integrity check")
 
             return object_key, calculated
 
-        temporary = destination.with_suffix(
-            ".tmp"
-        )
+        temporary = destination.with_suffix(".tmp")
 
-        temporary.write_bytes(
-            raw_data
-        )
+        temporary.write_bytes(raw_data)
 
-        temporary.replace(
-            destination
-        )
+        temporary.replace(destination)
 
         return object_key, calculated
 
@@ -92,13 +72,8 @@ class RawEvidenceStore:
         object_key: str,
     ) -> bytes:
 
-        relative = object_key.removeprefix(
-            "evidence/"
-        )
+        relative = object_key.removeprefix("evidence/")
 
-        path = (
-            self.root
-            / relative
-        )
+        path = self.root / relative
 
         return path.read_bytes()

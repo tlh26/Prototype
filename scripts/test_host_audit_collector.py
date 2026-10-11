@@ -11,11 +11,8 @@ from acquisition.collectors.audit import AuditCollector
 from acquisition.collectors.auditAttributor import IncusAuditAttributor
 from acquisition.collectors.hostExec import HostExecutor
 
-
 AUDIT_PATH = "/var/log/audit/audit.log"
-CHECKPOINT_PATH = Path(
-    "/tmp/evidence-host-audit-checkpoint.json"
-)
+CHECKPOINT_PATH = Path("/tmp/evidence-host-audit-checkpoint.json")
 
 
 def lookup_tenant(project_id: str):
@@ -52,9 +49,7 @@ def build_collector() -> AuditCollector:
     checkpoint_store = CheckpointStore(CHECKPOINT_PATH)
     attributor = IncusAuditAttributor()
 
-    executor = HostExecutor(
-        use_sudo=True
-    )
+    executor = HostExecutor(use_sudo=True)
 
     return AuditCollector(
         executor=executor,
@@ -66,9 +61,7 @@ def build_collector() -> AuditCollector:
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description=(
-            "Smoke-test the host-level Incus audit collector."
-        )
+        description=("Smoke-test the host-level Incus audit collector.")
     )
 
     parser.add_argument(
@@ -83,18 +76,14 @@ def main() -> None:
     parser.add_argument(
         "--reset",
         action="store_true",
-        help=(
-            "Delete the test checkpoint before collecting."
-        ),
+        help=("Delete the test checkpoint before collecting."),
     )
 
     args = parser.parse_args()
 
     if args.reset and CHECKPOINT_PATH.exists():
         CHECKPOINT_PATH.unlink()
-        print(
-            f"Removed checkpoint: {CHECKPOINT_PATH}"
-        )
+        print(f"Removed checkpoint: {CHECKPOINT_PATH}")
 
     collector = build_collector()
 
@@ -113,9 +102,7 @@ def main() -> None:
     # ------------------------------------------------------------------
 
     try:
-        batch = collector.collect_new(
-            audit_path=AUDIT_PATH
-        )
+        batch = collector.collect_new(audit_path=AUDIT_PATH)
     except Exception as exc:
         print("COLLECTION FAILED")
         print(f"{type(exc).__name__}: {exc}")
@@ -128,24 +115,13 @@ def main() -> None:
     print("Collection successful.")
     print()
     print(f"Evidence records : {len(batch.evidence)}")
-    print(
-        f"Next offset      : {batch.checkpoint.offset}"
-    )
-    print(
-        f"Last sequence    : {batch.checkpoint.last_sequence}"
-    )
-    print(
-        f"Pending bytes    : "
-        f"{len(batch.checkpoint.pending_data)}"
-    )
+    print(f"Next offset      : {batch.checkpoint.offset}")
+    print(f"Last sequence    : {batch.checkpoint.last_sequence}")
+    print(f"Pending bytes    : " f"{len(batch.checkpoint.pending_data)}")
 
     target = b"/tmp/evidence-live-test-005"
 
-    matches = [
-        evidence
-        for evidence in batch.evidence
-        if target in evidence.raw_data
-    ]
+    matches = [evidence for evidence in batch.evidence if target in evidence.raw_data]
 
     print()
     print("=" * 70)
@@ -176,74 +152,40 @@ def main() -> None:
         print(f"Evidence #{index}")
         print("-" * 70)
 
-        print(
-            f"Evidence ID       : {evidence.evidence_id}"
-        )
-        print(
-            f"Tenant            : {evidence.tenant_id}"
-        )
-        print(
-            f"Project           : {evidence.project_id}"
-        )
-        print(
-            f"Instance          : {evidence.instance_name}"
-        )
-        print(
-            f"Scope             : {evidence.scope}"
-        )
-        print(
-            f"Sequence start    : {evidence.sequence_start}"
-        )
-        print(
-            f"Sequence end      : {evidence.sequence_end}"
-        )
-        print(
-            f"Source            : {evidence.source}"
-        )
-        print(
-            f"Source path       : {evidence.source_path}"
-        )
-        print(
-            f"Acquisition layer : {evidence.acquisition_layer}"
-        )
-        print(
-            f"Acquired from     : {evidence.acquired_from}"
-        )
-        print(
-            f"Attribution       : {evidence.attribution_method}"
-        )
-        print(
-            f"SHA-256           : {evidence.sha256}"
-        )
-        print(
-            f"Size               : {evidence.size_bytes}"
-        )
+        print(f"Evidence ID       : {evidence.evidence_id}")
+        print(f"Tenant            : {evidence.tenant_id}")
+        print(f"Project           : {evidence.project_id}")
+        print(f"Instance          : {evidence.instance_name}")
+        print(f"Scope             : {evidence.scope}")
+        print(f"Sequence start    : {evidence.sequence_start}")
+        print(f"Sequence end      : {evidence.sequence_end}")
+        print(f"Source            : {evidence.source}")
+        print(f"Source path       : {evidence.source_path}")
+        print(f"Acquisition layer : {evidence.acquisition_layer}")
+        print(f"Acquired from     : {evidence.acquired_from}")
+        print(f"Attribution       : {evidence.attribution_method}")
+        print(f"SHA-256           : {evidence.sha256}")
+        print(f"Size               : {evidence.size_bytes}")
 
     # ------------------------------------------------------------------
     # Checkpoint
     # ------------------------------------------------------------------
 
     if args.commit:
-        collector.commit_checkpoint(
-            batch.checkpoint
-        )
+        collector.commit_checkpoint(batch.checkpoint)
 
         print()
         print("=" * 70)
         print("CHECKPOINT COMMITTED")
         print("=" * 70)
-        print(
-            f"Checkpoint saved to: {CHECKPOINT_PATH}"
-        )
+        print(f"Checkpoint saved to: {CHECKPOINT_PATH}")
 
     else:
         print()
         print("=" * 70)
         print("CHECKPOINT NOT COMMITTED")
         print("=" * 70)
-        print(
-            "This was a dry run. No acquisition cursor was advanced."
-        )
+        print("This was a dry run. No acquisition cursor was advanced.")
 
 
 if __name__ == "__main__":

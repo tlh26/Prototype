@@ -26,7 +26,8 @@ class AcquisitionResult(BaseModel):
     success: bool
     metadata: dict[str, Any] = {}
 
-class NormalizedAuditEvent(BaseModel):    
+
+class NormalizedAuditEvent(BaseModel):
     event_id: str
     tenant_id: str
     instance_name: str

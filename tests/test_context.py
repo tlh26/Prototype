@@ -11,7 +11,6 @@ from common.context import (
 )
 from common.hashing import HashingService
 
-
 hashing_service = HashingService()
 
 
@@ -19,9 +18,7 @@ def create_tenant(project_id: str) -> TenantContext:
     return TenantContext(
         tenant_id=project_id,
         tenant_name=f"tenant-{project_id.split('-')[-1]}",
-        tenant_hash=hashing_service.sha256(
-            f"incus:{project_id}"
-        ),
+        tenant_hash=hashing_service.sha256(f"incus:{project_id}"),
         platform=CloudPlatform.INCUS,
         platform_project_id=project_id,
     )

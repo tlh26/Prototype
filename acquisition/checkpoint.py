@@ -44,9 +44,7 @@ class AuditCheckpoint:
             "file_inode": self.file_inode,
             "offset": self.offset,
             "last_sequence": self.last_sequence,
-            "pending_data": base64.b64encode(
-                self.pending_data
-            ).decode("ascii"),
+            "pending_data": base64.b64encode(self.pending_data).decode("ascii"),
         }
 
     @classmethod
@@ -54,9 +52,7 @@ class AuditCheckpoint:
         cls,
         data: dict[str, object],
     ) -> "AuditCheckpoint":
-        encoded_pending = str(
-            data.get("pending_data", "")
-        )
+        encoded_pending = str(data.get("pending_data", ""))
 
         if encoded_pending:
             pending_data = base64.b64decode(
@@ -92,12 +88,9 @@ class AuditCheckpoint:
         """
 
         return (
-            self.source_path
-            == str(Path(source_path).resolve())
-            and self.file_device
-            == file_device
-            and self.file_inode
-            == file_inode
+            self.source_path == str(Path(source_path).resolve())
+            and self.file_device == file_device
+            and self.file_inode == file_inode
         )
 
 

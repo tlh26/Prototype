@@ -51,6 +51,4 @@ class IncusClient:
         return response["metadata"]
 
     def get_project(self, project_name: str) -> dict:
-        return self._get(
-            f"/1.0/projects/{project_name}"
-        )
+        return self._get(f"/1.0/projects/{project_name}")

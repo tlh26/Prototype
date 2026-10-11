@@ -21,7 +21,6 @@ from evidenceAgent.evidenceAgent.hostAgent import HostEvidenceAgent
 from evidenceAgent.evidenceAgent.hostConfig import HostAgentConfig
 from evidenceAgent.evidenceAgent.spool import EvidenceSpool
 
-
 # ============================================================================
 # Configuration
 # ============================================================================
@@ -56,18 +55,12 @@ REQUEST_TIMEOUT = int(
     )
 )
 
-TLS_VERIFY = (
-    os.getenv(
-        "EVIDENCE_TLS_VERIFY",
-        "true",
-    ).lower()
-    not in {"0", "false", "no"}
-)
+TLS_VERIFY = os.getenv(
+    "EVIDENCE_TLS_VERIFY",
+    "true",
+).lower() not in {"0", "false", "no"}
 
-BATCH_ENDPOINT = (
-    f"{CENTRAL_URL.rstrip('/')}"
-    "/api/v1/evidence/batches"
-)
+BATCH_ENDPOINT = f"{CENTRAL_URL.rstrip('/')}" "/api/v1/evidence/batches"
 
 # Dedicated lifecycle-test spool.
 
@@ -83,6 +76,7 @@ LIFECYCLE_SPOOL_DIR = Path(
 # Output helpers
 # ============================================================================
 
+
 def section(
     number: int,
     title: str,
@@ -90,9 +84,7 @@ def section(
 
     print()
     print("=" * 78)
-    print(
-        f"{number}. {title}"
-    )
+    print(f"{number}. {title}")
     print("=" * 78)
 
 
@@ -100,27 +92,21 @@ def passed(
     message: str,
 ) -> None:
 
-    print(
-        f"[PASS] {message}"
-    )
+    print(f"[PASS] {message}")
 
 
 def info(
     message: str,
 ) -> None:
 
-    print(
-        f"[INFO] {message}"
-    )
+    print(f"[INFO] {message}")
 
 
 def warning(
     message: str,
 ) -> None:
 
-    print(
-        f"[WARN] {message}"
-    )
+    print(f"[WARN] {message}")
 
 
 def require(
@@ -129,26 +115,22 @@ def require(
 ) -> None:
 
     if not condition:
-        raise RuntimeError(
-            message
-        )
+        raise RuntimeError(message)
 
 
 # ============================================================================
 # Spool loading
 # ============================================================================
 
-def load_spool_file(
-) -> tuple[EvidenceSpool, Path]:
+
+def load_spool_file() -> tuple[EvidenceSpool, Path]:
 
     section(
         1,
         "Locating retained real host-agent spool",
     )
 
-    info(
-        f"Spool file:\n  {SPOOL_FILE}"
-    )
+    info(f"Spool file:\n  {SPOOL_FILE}")
 
     require(
         SPOOL_FILE.exists(),
@@ -161,21 +143,12 @@ def load_spool_file(
 
     require(
         SPOOL_FILE.is_file(),
-        (
-            "Spool path is not a regular file: "
-            f"{SPOOL_FILE}"
-        ),
+        ("Spool path is not a regular file: " f"{SPOOL_FILE}"),
     )
 
-    spool = EvidenceSpool(
-        str(
-            SPOOL_FILE.parent
-        )
-    )
+    spool = EvidenceSpool(str(SPOOL_FILE.parent))
 
-    passed(
-        f"Spool file exists: {SPOOL_FILE}"
-    )
+    passed(f"Spool file exists: {SPOOL_FILE}")
 
     return spool, SPOOL_FILE
 
@@ -183,6 +156,7 @@ def load_spool_file(
 # ============================================================================
 # Batch validation
 # ============================================================================
+
 
 def validate_batch(
     batch,
@@ -194,12 +168,8 @@ def validate_batch(
     )
 
     require(
-        batch.agent_id
-        == "agent-host-smoke-test",
-        (
-            "Unexpected agent_id: "
-            f"{batch.agent_id!r}"
-        ),
+        batch.agent_id == "agent-host-smoke-test",
+        ("Unexpected agent_id: " f"{batch.agent_id!r}"),
     )
 
     require(
@@ -207,23 +177,17 @@ def validate_batch(
         "Spool batch contains no evidence.",
     )
 
-    print(
-        f"  agent_id:       {batch.agent_id}"
-    )
+    print(f"  agent_id:       {batch.agent_id}")
 
-    print(
-        f"  evidence count: {len(batch.evidence)}"
-    )
+    print(f"  evidence count: {len(batch.evidence)}")
 
-    passed(
-        "EvidenceSpool.load() reconstructed "
-        "the EvidenceBatch."
-    )
+    passed("EvidenceSpool.load() reconstructed " "the EvidenceBatch.")
 
 
 # ============================================================================
 # Independent envelope verification
 # ============================================================================
+
 
 def verify_envelope(
     envelope,
@@ -245,13 +209,11 @@ def verify_envelope(
     except Exception as exc:
 
         raise RuntimeError(
-            "Invalid Base64 for evidence "
-            f"{envelope.evidence_id}"
+            "Invalid Base64 for evidence " f"{envelope.evidence_id}"
         ) from exc
 
     require(
-        len(raw_data)
-        == envelope.size_bytes,
+        len(raw_data) == envelope.size_bytes,
         (
             f"Size mismatch for evidence "
             f"{envelope.evidence_id}: "
@@ -260,13 +222,10 @@ def verify_envelope(
         ),
     )
 
-    actual_sha256 = hashlib.sha256(
-        raw_data
-    ).hexdigest()
+    actual_sha256 = hashlib.sha256(raw_data).hexdigest()
 
     require(
-        actual_sha256
-        == envelope.sha256,
+        actual_sha256 == envelope.sha256,
         (
             f"SHA-256 mismatch for evidence "
             f"{envelope.evidence_id}: "
@@ -287,19 +246,15 @@ def validate_all_evidence(
 
     for envelope in batch.evidence:
 
-        verify_envelope(
-            envelope
-        )
+        verify_envelope(envelope)
 
-    passed(
-        "All envelopes passed Base64, size, "
-        "and SHA-256 verification."
-    )
+    passed("All envelopes passed Base64, size, " "and SHA-256 verification.")
 
 
 # ============================================================================
 # Batch metadata
 # ============================================================================
+
 
 def inspect_batch_metadata(
     batch,
@@ -315,41 +270,28 @@ def inspect_batch_metadata(
 
     for envelope in batch.evidence:
 
-        if (
-            envelope.tenant_id is not None
-            or envelope.instance_name is not None
-        ):
+        if envelope.tenant_id is not None or envelope.instance_name is not None:
             attributed += 1
         else:
             unattributed += 1
 
-    print(
-        f"  agent_id:       {batch.agent_id}"
-    )
+    print(f"  agent_id:       {batch.agent_id}")
 
-    print(
-        f"  evidence count: {len(batch.evidence)}"
-    )
+    print(f"  evidence count: {len(batch.evidence)}")
 
-    print(
-        f"  attributed:     {attributed}"
-    )
+    print(f"  attributed:     {attributed}")
 
-    print(
-        f"  unattributed:   {unattributed}"
-    )
+    print(f"  unattributed:   {unattributed}")
 
-    passed(
-        "Batch metadata inspection completed."
-    )
+    passed("Batch metadata inspection completed.")
 
 
 # ============================================================================
 # SQLite inspection
 # ============================================================================
 
-def connect_central_database(
-) -> sqlite3.Connection:
+
+def connect_central_database() -> sqlite3.Connection:
 
     require(
         CENTRAL_DB,
@@ -359,29 +301,18 @@ def connect_central_database(
         ),
     )
 
-    db_path = Path(
-        CENTRAL_DB
-    )
+    db_path = Path(CENTRAL_DB)
 
     require(
         db_path.exists(),
-        (
-            "Central database does not exist: "
-            f"{db_path}"
-        ),
+        ("Central database does not exist: " f"{db_path}"),
     )
 
-    info(
-        f"SQLite database: {db_path}"
-    )
+    info(f"SQLite database: {db_path}")
 
-    connection = sqlite3.connect(
-        db_path
-    )
+    connection = sqlite3.connect(db_path)
 
-    connection.row_factory = (
-        sqlite3.Row
-    )
+    connection.row_factory = sqlite3.Row
 
     return connection
 
@@ -390,16 +321,12 @@ def database_evidence_count(
     connection: sqlite3.Connection,
 ) -> int:
 
-    row = connection.execute(
-        """
+    row = connection.execute("""
         SELECT COUNT(*) AS count
         FROM evidence
-        """
-    ).fetchone()
+        """).fetchone()
 
-    return int(
-        row["count"]
-    )
+    return int(row["count"])
 
 
 def verify_central_database(
@@ -413,31 +340,18 @@ def verify_central_database(
         "Direct SQLite persistence inspection",
     )
 
-    connection = (
-        connect_central_database()
-    )
+    connection = connect_central_database()
 
     try:
 
-        total_count = (
-            database_evidence_count(
-                connection
-            )
-        )
+        total_count = database_evidence_count(connection)
 
-        print(
-            f"  SQLite evidence rows: "
-            f"{total_count}"
-        )
+        print(f"  SQLite evidence rows: " f"{total_count}")
 
-        if (
-            expected_total_count
-            is not None
-        ):
+        if expected_total_count is not None:
 
             require(
-                total_count
-                == expected_total_count,
+                total_count == expected_total_count,
                 (
                     "Unexpected Central evidence "
                     "row count: "
@@ -446,18 +360,14 @@ def verify_central_database(
                 ),
             )
 
-        duplicate_rows = (
-            connection.execute(
-                """
+        duplicate_rows = connection.execute("""
                 SELECT
                     evidence_id,
                     COUNT(*) AS count
                 FROM evidence
                 GROUP BY evidence_id
                 HAVING COUNT(*) > 1
-                """
-            ).fetchall()
-        )
+                """).fetchall()
 
         require(
             not duplicate_rows,
@@ -499,78 +409,48 @@ def verify_central_database(
                 FROM evidence
                 WHERE evidence_id = ?
                 """,
-                (
-                    envelope.evidence_id,
-                ),
+                (envelope.evidence_id,),
             ).fetchone()
 
             if row is None:
 
-                missing.append(
-                    envelope.evidence_id
-                )
+                missing.append(envelope.evidence_id)
 
                 continue
 
-            raw_data = bytes(
-                row["raw_data"]
-            )
+            raw_data = bytes(row["raw_data"])
 
-            actual_sha256 = (
-                hashlib.sha256(
-                    raw_data
-                ).hexdigest()
-            )
+            actual_sha256 = hashlib.sha256(raw_data).hexdigest()
 
             metadata_ok = (
-                row["sha256"]
-                == envelope.sha256
-                and row["size_bytes"]
-                == envelope.size_bytes
-                and row["tenant_id"]
-                == envelope.tenant_id
-                and row["instance_name"]
-                == envelope.instance_name
-                and row["project_id"]
-                == envelope.project_id
-                and row["scope"]
-                == envelope.scope
-                and row["source"]
-                == envelope.source
-                and row["source_path"]
-                == envelope.source_path
-                and row["acquisition_layer"]
-                == envelope.acquisition_layer
-                and row["acquired_from"]
-                == envelope.acquired_from
-                and row["attribution_method"]
-                == envelope.attribution_method
-                and row["sequence_start"]
-                == envelope.sequence_start
-                and row["sequence_end"]
-                == envelope.sequence_end
+                row["sha256"] == envelope.sha256
+                and row["size_bytes"] == envelope.size_bytes
+                and row["tenant_id"] == envelope.tenant_id
+                and row["instance_name"] == envelope.instance_name
+                and row["project_id"] == envelope.project_id
+                and row["scope"] == envelope.scope
+                and row["source"] == envelope.source
+                and row["source_path"] == envelope.source_path
+                and row["acquisition_layer"] == envelope.acquisition_layer
+                and row["acquired_from"] == envelope.acquired_from
+                and row["attribution_method"] == envelope.attribution_method
+                and row["sequence_start"] == envelope.sequence_start
+                and row["sequence_end"] == envelope.sequence_end
             )
 
             raw_integrity_ok = (
-                actual_sha256
-                == envelope.sha256
-                and actual_sha256
-                == row["sha256"]
-                and len(raw_data)
-                == row["size_bytes"]
+                actual_sha256 == envelope.sha256
+                and actual_sha256 == row["sha256"]
+                and len(raw_data) == row["size_bytes"]
             )
 
             if not metadata_ok:
 
-                mismatched.append(
-                    envelope.evidence_id
-                )
+                mismatched.append(envelope.evidence_id)
 
             if not raw_integrity_ok:
 
-                integrity_failures.append(
-                    envelope.evidence_id
-                )
+                integrity_failures.append(envelope.evidence_id)
 
         require(
             not missing,
@@ -602,23 +482,13 @@ def verify_central_database(
             ),
         )
 
-        passed(
-            "Every spool evidence record exists in SQLite."
-        )
+        passed("Every spool evidence record exists in SQLite.")
 
-        passed(
-            "Every persisted raw BLOB has the "
-            "expected size and SHA-256."
-        )
+        passed("Every persisted raw BLOB has the " "expected size and SHA-256.")
 
-        passed(
-            "Persisted provenance and sequence "
-            "metadata match the spool."
-        )
+        passed("Persisted provenance and sequence " "metadata match the spool.")
 
-        passed(
-            "No duplicate evidence IDs exist."
-        )
+        passed("No duplicate evidence IDs exist.")
 
         return total_count
 
@@ -631,6 +501,7 @@ def verify_central_database(
 # Spool lifecycle
 # ============================================================================
 
+
 def verify_spool_pending(
     spool: EvidenceSpool,
     spool_path: Path,
@@ -638,82 +509,54 @@ def verify_spool_pending(
     expected: bool,
 ) -> None:
 
-    state = (
-        "PRESENT"
-        if expected
-        else "ABSENT"
-    )
+    state = "PRESENT" if expected else "ABSENT"
 
     print()
     print("-" * 78)
-    print(
-        f"Spool lifecycle state: "
-        f"expected {state}"
-    )
+    print(f"Spool lifecycle state: " f"expected {state}")
     print("-" * 78)
 
     pending = spool.pending()
 
-    print(
-        f"  pending entries: "
-        f"{len(pending)}"
-    )
+    print(f"  pending entries: " f"{len(pending)}")
 
     for path in pending:
 
-        print(
-            f"    {path}"
-        )
+        print(f"    {path}")
 
     if expected:
 
         require(
             spool_path.exists(),
-            (
-                "Expected spool entry to remain "
-                "on disk, but it does not exist."
-            ),
+            ("Expected spool entry to remain " "on disk, but it does not exist."),
         )
 
         require(
             spool_path in pending,
-            (
-                "Expected spool entry to appear "
-                "in EvidenceSpool.pending()."
-            ),
+            ("Expected spool entry to appear " "in EvidenceSpool.pending()."),
         )
 
-        passed(
-            "Spool entry is retained and pending."
-        )
+        passed("Spool entry is retained and pending.")
 
     else:
 
         require(
             not spool_path.exists(),
-            (
-                "Spool entry should have been removed "
-                "after successful delivery."
-            ),
+            ("Spool entry should have been removed " "after successful delivery."),
         )
 
         require(
             spool_path not in pending,
-            (
-                "Removed spool entry still appears "
-                "in EvidenceSpool.pending()."
-            ),
+            ("Removed spool entry still appears " "in EvidenceSpool.pending()."),
         )
 
-        passed(
-            "Spool entry was removed and is no "
-            "longer pending."
-        )
+        passed("Spool entry was removed and is no " "longer pending.")
 
 
 # ============================================================================
 # Lifecycle-test spool
 # ============================================================================
+
 
 def prepare_lifecycle_spool(
     batch,
@@ -726,41 +569,25 @@ def prepare_lifecycle_spool(
 
     if LIFECYCLE_SPOOL_DIR.exists():
 
-        shutil.rmtree(
-            LIFECYCLE_SPOOL_DIR
-        )
+        shutil.rmtree(LIFECYCLE_SPOOL_DIR)
 
     LIFECYCLE_SPOOL_DIR.mkdir(
         parents=True,
         exist_ok=True,
     )
 
-    spool = EvidenceSpool(
-        str(
-            LIFECYCLE_SPOOL_DIR
-        )
-    )
+    spool = EvidenceSpool(str(LIFECYCLE_SPOOL_DIR))
 
-    spool_path = spool.store(
-        batch
-    )
+    spool_path = spool.store(batch)
 
     require(
         spool_path.exists(),
-        (
-            "Failed to create lifecycle "
-            "test spool entry."
-        ),
+        ("Failed to create lifecycle " "test spool entry."),
     )
 
-    print(
-        f"  Lifecycle spool: {spool_path}"
-    )
+    print(f"  Lifecycle spool: {spool_path}")
 
-    passed(
-        "Real EvidenceBatch copied into "
-        "isolated lifecycle-test spool."
-    )
+    passed("Real EvidenceBatch copied into " "isolated lifecycle-test spool.")
 
     return spool, spool_path
 
@@ -768,6 +595,7 @@ def prepare_lifecycle_spool(
 # ============================================================================
 # Host-agent construction
 # ============================================================================
+
 
 def build_host_agent(
     *,
@@ -779,12 +607,8 @@ def build_host_agent(
         agent_id="agent-host-smoke-test",
         central_url=central_url,
         api_key=API_KEY,
-        audit_path=Path(
-            "/var/log/audit/audit.log"
-        ),
-        state_directory=Path(
-            "/tmp/host-agent-lifecycle-state"
-        ),
+        audit_path=Path("/var/log/audit/audit.log"),
+        state_directory=Path("/tmp/host-agent-lifecycle-state"),
         spool_directory=spool.directory,
         interval=10,
     )
@@ -806,6 +630,7 @@ def build_host_agent(
 # Central configuration
 # ============================================================================
 
+
 def inspect_central_target() -> None:
 
     section(
@@ -813,35 +638,26 @@ def inspect_central_target() -> None:
         "Inspecting Central delivery configuration",
     )
 
-    print(
-        f"  Central URL: {CENTRAL_URL}"
-    )
+    print(f"  Central URL: {CENTRAL_URL}")
 
-    print(
-        f"  Endpoint:    {BATCH_ENDPOINT}"
-    )
+    print(f"  Endpoint:    {BATCH_ENDPOINT}")
 
-    print(
-        f"  TLS verify:  {TLS_VERIFY}"
-    )
+    print(f"  TLS verify:  {TLS_VERIFY}")
 
-    print(
-        f"  Timeout:     {REQUEST_TIMEOUT}s"
-    )
+    print(f"  Timeout:     {REQUEST_TIMEOUT}s")
 
     require(
         API_KEY,
         "EVIDENCE_API_KEY is empty.",
     )
 
-    passed(
-        "Central delivery configuration is present."
-    )
+    passed("Central delivery configuration is present.")
 
 
 # ============================================================================
 # Outage -> spool retention
 # ============================================================================
+
 
 def test_retry_retains_spool_during_outage(
     spool: EvidenceSpool,
@@ -864,9 +680,7 @@ def test_retry_retains_spool_during_outage(
         "http://127.0.0.1:1",
     )
 
-    info(
-        f"Simulated outage target: {outage_url}"
-    )
+    info(f"Simulated outage target: {outage_url}")
 
     agent = build_host_agent(
         central_url=outage_url,
@@ -881,14 +695,13 @@ def test_retry_retains_spool_during_outage(
         expected=True,
     )
 
-    passed(
-        "Central failure retained the spool entry."
-    )
+    passed("Central failure retained the spool entry.")
 
 
 # ============================================================================
 # Recovery -> successful retry
 # ============================================================================
+
 
 def test_retry_removes_spool_after_recovery(
     spool: EvidenceSpool,
@@ -906,9 +719,7 @@ def test_retry_removes_spool_after_recovery(
         spool=spool,
     )
 
-    info(
-        "Central target restored."
-    )
+    info("Central target restored.")
 
     agent.retry_spool()
 
@@ -918,109 +729,69 @@ def test_retry_removes_spool_after_recovery(
         expected=False,
     )
 
-    passed(
-        "Successful Central acknowledgement "
-        "removed the spool entry."
-    )
+    passed("Successful Central acknowledgement " "removed the spool entry.")
 
 
 # ============================================================================
 # Main
 # ============================================================================
 
+
 def main() -> None:
 
     print()
     print("=" * 78)
-    print(
-        "REAL SPOOL -> CENTRAL RETRY LIFECYCLE TEST"
-    )
+    print("REAL SPOOL -> CENTRAL RETRY LIFECYCLE TEST")
     print("=" * 78)
 
     print()
-    print(
-        "This test validates:"
-    )
+    print("This test validates:")
 
-    print(
-        "  real spool"
-        " -> integrity"
-        " -> SQLite"
-    )
+    print("  real spool" " -> integrity" " -> SQLite")
 
-    print(
-        "  isolated spool"
-        " -> Central outage"
-        " -> retained"
-    )
+    print("  isolated spool" " -> Central outage" " -> retained")
 
-    print(
-        "  Central recovery"
-        " -> retry"
-        " -> acknowledgement"
-        " -> removal"
-    )
+    print("  Central recovery" " -> retry" " -> acknowledgement" " -> removal")
 
     # ------------------------------------------------------------------
     # 1. Locate real retained spool.
     # ------------------------------------------------------------------
 
-    real_spool, real_spool_path = (
-        load_spool_file()
-    )
+    real_spool, real_spool_path = load_spool_file()
 
     # ------------------------------------------------------------------
     # 2. Load batch.
     # ------------------------------------------------------------------
 
-    batch = real_spool.load(
-        real_spool_path
-    )
+    batch = real_spool.load(real_spool_path)
 
-    validate_batch(
-        batch
-    )
+    validate_batch(batch)
 
     # ------------------------------------------------------------------
     # 3. Verify evidence integrity.
     # ------------------------------------------------------------------
 
-    validate_all_evidence(
-        batch
-    )
+    validate_all_evidence(batch)
 
     # ------------------------------------------------------------------
     # 4. Inspect metadata.
     # ------------------------------------------------------------------
 
-    inspect_batch_metadata(
-        batch
-    )
+    inspect_batch_metadata(batch)
 
     # ------------------------------------------------------------------
     # 5. Verify existing Central persistence.
     # ------------------------------------------------------------------
 
-    before_count = (
-        verify_central_database(
-            batch
-        )
-    )
+    before_count = verify_central_database(batch)
 
-    info(
-        "SQLite row count before retry "
-        f"lifecycle: {before_count}"
-    )
+    info("SQLite row count before retry " f"lifecycle: {before_count}")
 
     # ------------------------------------------------------------------
     # 6. Create isolated lifecycle spool.
     # ------------------------------------------------------------------
 
-    lifecycle_spool, lifecycle_path = (
-        prepare_lifecycle_spool(
-            batch
-        )
-    )
+    lifecycle_spool, lifecycle_path = prepare_lifecycle_spool(batch)
 
     verify_spool_pending(
         lifecycle_spool,
@@ -1063,11 +834,7 @@ def main() -> None:
         "Verifying SQLite after successful retry",
     )
 
-    after_count = (
-        verify_central_database(
-            batch
-        )
-    )
+    after_count = verify_central_database(batch)
 
     require(
         after_count == before_count,
@@ -1079,10 +846,7 @@ def main() -> None:
         ),
     )
 
-    passed(
-        "Successful retry did not create "
-        "duplicate evidence."
-    )
+    passed("Successful retry did not create " "duplicate evidence.")
 
     # ------------------------------------------------------------------
     # 11. Final result.
@@ -1093,114 +857,59 @@ def main() -> None:
         "Final result",
     )
 
-    print(
-        "REAL SPOOL -> CENTRAL RETRY "
-        "LIFECYCLE TEST PASSED"
-    )
+    print("REAL SPOOL -> CENTRAL RETRY " "LIFECYCLE TEST PASSED")
 
     print()
 
-    print(
-        "Validated:"
-    )
+    print("Validated:")
 
-    print(
-        "  [PASS] Existing real host-agent spool located"
-    )
+    print("  [PASS] Existing real host-agent spool located")
 
-    print(
-        "  [PASS] EvidenceSpool.load()"
-    )
+    print("  [PASS] EvidenceSpool.load()")
 
-    print(
-        "  [PASS] Base64 verification"
-    )
+    print("  [PASS] Base64 verification")
 
-    print(
-        "  [PASS] Size verification"
-    )
+    print("  [PASS] Size verification")
 
-    print(
-        "  [PASS] SHA-256 verification"
-    )
+    print("  [PASS] SHA-256 verification")
 
-    print(
-        "  [PASS] Batch metadata inspection"
-    )
+    print("  [PASS] Batch metadata inspection")
 
-    print(
-        "  [PASS] Direct SQLite persistence"
-    )
+    print("  [PASS] Direct SQLite persistence")
 
-    print(
-        "  [PASS] SQLite raw-data integrity"
-    )
+    print("  [PASS] SQLite raw-data integrity")
 
-    print(
-        "  [PASS] SQLite provenance verification"
-    )
+    print("  [PASS] SQLite provenance verification")
 
-    print(
-        "  [PASS] Duplicate evidence detection"
-    )
+    print("  [PASS] Duplicate evidence detection")
 
-    print(
-        "  [PASS] Spool pending state"
-    )
+    print("  [PASS] Spool pending state")
 
-    print(
-        "  [PASS] Central outage handling"
-    )
+    print("  [PASS] Central outage handling")
 
-    print(
-        "  [PASS] Spool retained during outage"
-    )
+    print("  [PASS] Spool retained during outage")
 
-    print(
-        "  [PASS] Central recovery"
-    )
+    print("  [PASS] Central recovery")
 
-    print(
-        "  [PASS] Actual HostEvidenceAgent.retry_spool()"
-    )
+    print("  [PASS] Actual HostEvidenceAgent.retry_spool()")
 
-    print(
-        "  [PASS] Successful Central acknowledgement"
-    )
+    print("  [PASS] Successful Central acknowledgement")
 
-    print(
-        "  [PASS] Spool removed after successful retry"
-    )
+    print("  [PASS] Spool removed after successful retry")
 
-    print(
-        "  [PASS] SQLite row count unchanged"
-    )
+    print("  [PASS] SQLite row count unchanged")
 
-    print(
-        "  [PASS] No duplicate SQLite evidence"
-    )
+    print("  [PASS] No duplicate SQLite evidence")
 
     print()
 
-    print(
-        f"Evidence in batch: "
-        f"{len(batch.evidence)}"
-    )
+    print(f"Evidence in batch: " f"{len(batch.evidence)}")
 
-    print(
-        f"SQLite rows:        "
-        f"{after_count}"
-    )
+    print(f"SQLite rows:        " f"{after_count}")
 
-    print(
-        f"Original spool:     "
-        f"{real_spool_path}"
-    )
+    print(f"Original spool:     " f"{real_spool_path}")
 
-    print(
-        f"Lifecycle spool:    "
-        f"{lifecycle_path}"
-    )
+    print(f"Lifecycle spool:    " f"{lifecycle_path}")
 
 
 if __name__ == "__main__":

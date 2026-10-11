@@ -12,19 +12,14 @@ from pydantic import BaseModel
 from central.database import CentralDatabase
 from central.storage import RawEvidenceStore
 
-
 app = FastAPI(
     title="Central Evidence Storage",
     version="1.0.0",
 )
 
-database = CentralDatabase(
-    "data/central.db"
-)
+database = CentralDatabase("data/central.db")
 
-store = RawEvidenceStore(
-    "/srv/evidence-objects"
-)
+store = RawEvidenceStore("/srv/evidence-objects")
 
 API_KEY = os.getenv(
     "EVIDENCE_API_KEY",
@@ -64,14 +59,10 @@ class EvidenceSubmission(BaseModel):
     created_at: str
 
 
-@app.post(
-    "/api/v1/evidence"
-)
+@app.post("/api/v1/evidence")
 def submit_evidence(
     submission: EvidenceSubmission,
-    authorization: str | None = Header(
-        default=None
-    ),
+    authorization: str | None = Header(default=None),
 ):
 
     expected = f"Bearer {API_KEY}"
@@ -83,13 +74,9 @@ def submit_evidence(
             detail="Invalid authentication",
         )
 
-    raw_data = submission.raw_data.encode(
-        "utf-8"
-    )
+    raw_data = submission.raw_data.encode("utf-8")
 
-    calculated = hashlib.sha256(
-        raw_data
-    ).hexdigest()
+    calculated = hashlib.sha256(raw_data).hexdigest()
 
     if calculated != submission.sha256:
 
@@ -130,9 +117,7 @@ def submit_evidence(
         ).encode()
     ).hexdigest()
 
-    received_at = datetime.now(
-        timezone.utc
-    ).isoformat()
+    received_at = datetime.now(timezone.utc).isoformat()
 
     with database.connect() as db:
 
@@ -187,8 +172,7 @@ def submit_evidence(
 
                 return {
                     "status": "duplicate",
-                    "evidence_id":
-                        submission.event_id,
+                    "evidence_id": submission.event_id,
                     "sha256": submission.sha256,
                     "object_key": object_key,
                 }

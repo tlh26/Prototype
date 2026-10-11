@@ -11,18 +11,12 @@ def test_database_initialises(tmp_path):
     config = type(
         "Config",
         (),
-        {
-            "database_path": str(
-                tmp_path / "evidence.db"
-            )
-        },
+        {"database_path": str(tmp_path / "evidence.db")},
     )()
 
     initialise_database(config)
 
-    assert (
-        tmp_path / "evidence.db"
-    ).exists()
+    assert (tmp_path / "evidence.db").exists()
 
 
 def test_repository_get_missing_event(
@@ -31,11 +25,7 @@ def test_repository_get_missing_event(
     config = type(
         "Config",
         (),
-        {
-            "database_path": str(
-                tmp_path / "evidence.db"
-            )
-        },
+        {"database_path": str(tmp_path / "evidence.db")},
     )()
 
     initialise_database(config)
@@ -43,13 +33,9 @@ def test_repository_get_missing_event(
     connection = get_connection(config)
 
     try:
-        repository = EvidenceRepository(
-            connection
-        )
+        repository = EvidenceRepository(connection)
 
-        assert repository.get(
-            "missing-event"
-        ) is None
+        assert repository.get("missing-event") is None
 
     finally:
         connection.close()

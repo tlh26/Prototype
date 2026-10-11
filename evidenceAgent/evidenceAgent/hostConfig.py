@@ -26,9 +26,7 @@ class HostAgentConfig:
             value = os.getenv(name)
 
             if not value:
-                raise RuntimeError(
-                    f"Missing environment variable: {name}"
-                )
+                raise RuntimeError(f"Missing environment variable: {name}")
 
             return value
 
@@ -42,49 +40,30 @@ class HostAgentConfig:
         checkpoint_path = Path(
             os.getenv(
                 "EVIDENCE_HOST_CHECKPOINT_PATH",
-                str(
-                    state_directory
-                    / "host-audit-checkpoint.json"
-                ),
+                str(state_directory / "host-audit-checkpoint.json"),
             )
         ).expanduser()
 
         spool_directory = Path(
             os.getenv(
                 "EVIDENCE_HOST_SPOOL_DIRECTORY",
-                str(
-                    state_directory
-                    / "host-spool"
-                ),
+                str(state_directory / "host-spool"),
             )
         ).expanduser()
 
         return cls(
-            agent_id=required(
-                "EVIDENCE_AGENT_ID"
-            ),
-
-            central_url=required(
-                "EVIDENCE_CENTRAL_URL"
-            ),
-
-            api_key=required(
-                "EVIDENCE_API_KEY"
-            ),
-
+            agent_id=required("EVIDENCE_AGENT_ID"),
+            central_url=required("EVIDENCE_CENTRAL_URL"),
+            api_key=required("EVIDENCE_API_KEY"),
             audit_path=Path(
                 os.getenv(
                     "EVIDENCE_AUDIT_PATH",
                     "/var/log/audit/audit.log",
                 )
             ).expanduser(),
-
             state_directory=state_directory,
-
             checkpoint_path=checkpoint_path,
-
             spool_directory=spool_directory,
-
             interval=int(
                 os.getenv(
                     "EVIDENCE_INTERVAL",

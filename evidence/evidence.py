@@ -1,5 +1,5 @@
 """
-Conceptually: 
+Conceptually:
 class EvidenceRecord(BaseModel):
     evidence_id: str
 

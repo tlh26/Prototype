@@ -1,0 +1,348 @@
+{% extends "dashboard/base.html" %}
+{% load dashboard_formatting %}
+
+{% block title %}
+Evidence · Evidence Correlation Platform
+{% endblock %}
+
+{% block topbar_title %}
+Evidence
+{% endblock %}
+
+{% block content %}
+
+<div class="section-header">
+    <div class="section-header-main">
+        <div class="breadcrumbs">
+            <span class="breadcrumb-current">
+                Evidence
+            </span>
+        </div>
+        <h1 class="section-title">
+            Evidence
+        </h1>
+        <p class="section-description">
+            Evidence collected from the central evidence store.
+        </p>
+    </div>
+</div>
+{% include "dashboard/partials/central_status.html" %}
+
+<div class="card filter-card">
+    <form method="get" class="filter-toolbar">
+        <div class="form-group filter-field">
+            <label for="tenant_id" class="form-label">
+                Tenant
+            </label>
+            <input id="tenant_id" name="tenant_id" type="text" class="form-control" value="{{ tenant_id|default:'' }}"
+                placeholder="All tenants">
+        </div>
+
+
+        <div class="form-group filter-field">
+
+            <label for="instance_name" class="form-label">
+                Instance
+            </label>
+
+            <input id="instance_name" name="instance_name" type="text" class="form-control"
+                value="{{ instance_name|default:'' }}" placeholder="All instances">
+
+        </div>
+
+
+        <div class="filter-actions">
+
+            <button type="submit" class="btn btn-primary">
+                Apply filters
+            </button>
+
+            <a href="{% url 'dashboard:evidence' %}" class="btn btn-secondary">
+                Clear
+            </a>
+        </div>
+    </form>
+</div>
+
+<div class="overview-grid">
+    <div class="card overview-stat-card">
+        <div class="overview-stat-label">
+            Evidence returned
+        </div>
+        <div class="overview-stat-value">
+            {% if central_available is False and not evidence_items %}
+            —
+            {% else %}
+            {{ evidence_items|length }}
+            {% endif %}
+        </div>
+        <div class="overview-stat-note">
+            {% if central_available is False and not evidence_items %}
+            Evidence count unavailable
+            {% else %}
+            Items in the current result set
+            {% endif %}
+        </div>
+    </div>
+
+
+    <div class="card overview-stat-card">
+        <div class="overview-stat-label">
+            Scope
+        </div>
+        <div class="overview-stat-value">
+            {% if tenant_id or instance_name %}
+            Filtered
+            {% else %}
+            All
+            {% endif %}
+        </div>
+        <div class="overview-stat-note">
+            {% if tenant_id and instance_name %}
+            Tenant: {{ tenant_id }} · Instance: {{ instance_name }}
+            {% elif tenant_id %}
+            Tenant: {{ tenant_id }}
+            {% elif instance_name %}
+            Instance: {{ instance_name }}
+            {% else %}
+            No tenant or instance filter
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+
+{% if tenant_id or instance_name %}
+
+<div class="card">
+
+    
+    <div class="card-body">
+
+        <div class="section-header">
+
+            <div class="section-header-main">
+
+                <h2 class="section-title">
+                    Active filters
+                </h2>
+
+            </div>
+
+        </div>
+
+
+        <div class="filter-toolbar">
+
+            {% if tenant_id %}
+
+            <span class="badge">
+                Tenant: {{ tenant_id }}
+            </span>
+
+            {% endif %}
+
+
+            {% if instance_name %}
+
+            <span class="badge">
+                Instance: {{ instance_name }}
+            </span>
+
+            {% endif %}
+
+        </div>
+
+    </div>
+    
+
+</div>
+
+{% endif %}
+
+<div class="card">
+
+    
+    <div class="card-body">
+        <div class="section-header">
+            <div class="section-header-main">
+                <h2 class="section-title">
+                    Evidence items
+                </h2>
+                <p class="section-description">
+                    Select an evidence item to inspect its identity,
+                    provenance, integrity metadata, and raw details.
+                </p>
+            </div>
+        </div>
+        {% if evidence_items %}
+        <div class="table-responsive">
+            <table class="evidence-table">
+                <thead>
+                    <tr>
+                        <th scope="col">
+                            Timestamp
+                        </th>
+
+                        <th scope="col">
+                            Tenant
+                        </th>
+
+                        <th scope="col">
+                            Instance
+                        </th>
+
+                        <th scope="col">
+                            Type
+                        </th>
+
+                        <th scope="col">
+                            Source
+                        </th>
+                        <th scope="col">
+                            Evidence ID
+                        </th>
+                        <th scope="col">
+                        </th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in evidence_items %}
+                    <tr>
+
+                        <td class="evidence-timestamp">
+
+                            {% if item.event_id %}
+
+                            {{ item.timestamp|display_datetime|default:"—" }}
+
+                            {% else %}
+
+                            {{ item.collected_at|display_datetime|default:"—" }}
+
+                            {% endif %}
+
+                        </td>
+                        <td>
+                            <span class="evidence-instance">
+                                {{ item.tenant_id|default:"—" }}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="evidence-instance">
+                                {{ item.instance_name|default:"—" }}
+                            </span>
+                        </td>
+                        <td>
+                            {% if item.event_id %}
+                            <span class="badge">
+                                Event
+                            </span>
+                            <div>
+                                {{ item.event_type|display_value|default:"—" }}
+                            </div>
+                            {% elif item.evidence_id %}
+                            <span class="badge">
+                                Forensic record
+                            </span>
+                            <div>
+                                {{ item.evidence_type|display_value|default:"—" }}
+                            </div>
+                            {% else %}
+                            <span class="badge">
+                                Evidence
+                            </span>
+                            {% endif %}
+                        </td>
+                        <td class="evidence-source">
+                            {{ item.source|default:"—" }}
+                        </td>
+                        <td class="evidence-id">
+                            {% if item.event_id %}
+                            <code>
+                            {{ item.event_id }}
+                        </code>
+                            {% elif item.evidence_id %}
+                            <code>
+                            {{ item.evidence_id }}
+                        </code>
+                            {% else %}
+                            <span>
+                                —
+                            </span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if item.event_id %}
+                            <a href="{% url 'dashboard:evidence_detail' item.event_id %}"
+                                class="btn btn-secondary btn-sm">
+                                View
+                            </a>
+                            {% elif item.evidence_id %}
+                            <a href="{% url 'dashboard:evidence_detail' item.evidence_id %}"
+                                class="btn btn-secondary btn-sm">
+                                View
+                            </a>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <!-- {# ------------------------------------------------------------ #}
+        {# No evidence / Central unavailable #}
+        {# ------------------------------------------------------------ #} -->
+
+        {% elif central_available is False %}
+        <div class="empty-state">
+            <h3>
+                Evidence unavailable
+            </h3>
+            {% if using_last_known_data %}
+            <p>
+                The Central evidence store is currently unavailable.
+                No cached evidence matches the selected filters.
+            </p>
+            {% if tenant_id or instance_name %}
+            <p>
+                The selected filters may not be represented in the
+                last known dashboard state.
+            </p>
+            {% endif %}
+            {% else %}
+            <p>
+                The Central evidence store is currently unavailable,
+                and no previous evidence state is available.
+            </p>
+            {% endif %}
+            {% if tenant_id or instance_name %}
+            <a href="{% url 'dashboard:evidence' %}" class="btn btn-secondary">
+                Clear filters
+            </a>
+            {% endif %}
+        </div>
+<!-- 
+        {# ------------------------------------------------------------ #}
+        {# Central available but genuinely empty #}
+        {# ------------------------------------------------------------ #} -->
+
+        {% else %}
+        <div class="empty-state">
+            <h3>
+                No evidence found
+            </h3>
+            <p>
+                No evidence items were returned for the selected
+                tenant and instance filters.
+            </p>
+            {% if tenant_id or instance_name %}
+            <a href="{% url 'dashboard:evidence' %}" class="btn btn-secondary">
+                Clear filters
+            </a>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

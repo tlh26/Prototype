@@ -95,11 +95,7 @@ def test_failed_submission_keeps_spool(
 
     agent = EvidenceAgent(agent_config)
 
-    agent.client.submit = Mock(
-        side_effect=ConnectionError(
-            "central unavailable"
-        )
-    )
+    agent.client.submit = Mock(side_effect=ConnectionError("central unavailable"))
 
     agent.collect_once()
 
@@ -139,7 +135,7 @@ def test_multiple_collectors_share_sequence(
     # Prepare access evidence.
     # ------------------------------------------------------------------
     access_log.write_text(
-        '10.0.0.1 - - [31/Aug/2026:14:00:00 +0200] '
+        "10.0.0.1 - - [31/Aug/2026:14:00:00 +0200] "
         '"GET /api/users HTTP/1.1" 200 10\n',
         encoding="utf-8",
     )
@@ -173,9 +169,7 @@ def test_multiple_collectors_share_sequence(
     # ------------------------------------------------------------------
     # Generate new filesystem evidence AFTER the baseline exists.
     # ------------------------------------------------------------------
-    watched_directory.joinpath(
-        "evidence.txt"
-    ).write_text(
+    watched_directory.joinpath("evidence.txt").write_text(
         "test",
         encoding="utf-8",
     )
@@ -193,10 +187,7 @@ def test_multiple_collectors_share_sequence(
     # ------------------------------------------------------------------
     # Verify that all collectors share one sequence.
     # ------------------------------------------------------------------
-    sequences = [
-        event.sequence
-        for event in submitted
-    ]
+    sequences = [event.sequence for event in submitted]
 
     assert sequences == [1, 2, 3]
 
@@ -209,10 +200,7 @@ def test_multiple_collectors_share_sequence(
     # ------------------------------------------------------------------
     # Verify that the three expected evidence types were collected.
     # ------------------------------------------------------------------
-    evidence_types = [
-        event.evidence_type
-        for event in submitted
-    ]
+    evidence_types = [event.evidence_type for event in submitted]
 
     assert evidence_types[0].value == "authentication"
     assert evidence_types[1].value == "trace"

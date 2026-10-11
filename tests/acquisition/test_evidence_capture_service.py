@@ -19,7 +19,6 @@ from evidence.tenant import (
     TenantContext,
 )
 
-
 # ============================================================================
 # Test data helpers
 # ============================================================================
@@ -69,9 +68,7 @@ def create_audit_evidence(
 
     import hashlib
 
-    digest = hashlib.sha256(
-        raw_data
-    ).hexdigest()
+    digest = hashlib.sha256(raw_data).hexdigest()
 
     return AuditEvidence(
         evidence_id=evidence_id,
@@ -79,18 +76,13 @@ def create_audit_evidence(
         tenant_hash=f"hash-{tenant_id}",
         project_id=tenant_id,
         instance_name=instance_name,
-        scope=(
-            f"{tenant_id}/"
-            f"{instance_name}"
-        ),
+        scope=(f"{tenant_id}/" f"{instance_name}"),
         source="auditd",
         source_path="/var/log/audit/audit.log",
         acquisition_layer="host",
         acquired_from="test-host",
         attribution_method="incus_subject",
-        collected_at=datetime.now(
-            timezone.utc
-        ),
+        collected_at=datetime.now(timezone.utc),
         raw_data=raw_data,
         sha256=digest,
         size_bytes=len(raw_data),
@@ -130,13 +122,9 @@ def create_service(
     Create EvidenceCaptureService with mocked dependencies.
     """
 
-    registry = Mock(
-        spec=CollectorRegistry
-    )
+    registry = Mock(spec=CollectorRegistry)
 
-    registry.get.return_value = (
-        collector
-    )
+    registry.get.return_value = collector
 
     repository = create_mock_repository()
 
@@ -182,9 +170,7 @@ def test_capture_successfully_acquires_and_persists_evidence():
 
     collector = Mock()
 
-    collector.collect.return_value = (
-        evidence
-    )
+    collector.collect.return_value = evidence
 
     (
         service,
@@ -205,33 +191,19 @@ def test_capture_successfully_acquires_and_persists_evidence():
 
     assert manifest.capture_id
 
-    assert (
-        manifest.tenant_id
-        == target.tenant.tenant_id
-    )
+    assert manifest.tenant_id == target.tenant.tenant_id
 
-    assert (
-        manifest.tenant_hash
-        == target.tenant.tenant_hash
-    )
+    assert manifest.tenant_hash == target.tenant.tenant_hash
 
-    assert (
-        manifest.project_id
-        == target.tenant.platform_project_id
-    )
+    assert manifest.project_id == target.tenant.platform_project_id
 
-    assert (
-        manifest.instance_name
-        == target.instance_name
-    )
+    assert manifest.instance_name == target.instance_name
 
     # ------------------------------------------------------------------
     # Collector selection
     # ------------------------------------------------------------------
 
-    registry.get.assert_called_once_with(
-        "auditd"
-    )
+    registry.get.assert_called_once_with("auditd")
 
     # ------------------------------------------------------------------
     # Collector invocation
@@ -252,34 +224,19 @@ def test_capture_successfully_acquires_and_persists_evidence():
 
     assert result.source == "auditd"
 
-    assert (
-        result.status
-        == SourceCaptureStatus.SUCCESS
-    )
+    assert result.status == SourceCaptureStatus.SUCCESS
 
-    assert (
-        result.evidence_id
-        == evidence.evidence_id
-    )
+    assert result.evidence_id == evidence.evidence_id
 
-    assert (
-        result.sha256
-        == evidence.sha256
-    )
+    assert result.sha256 == evidence.sha256
 
-    assert (
-        result.size_bytes
-        == evidence.size_bytes
-    )
+    assert result.size_bytes == evidence.size_bytes
 
     # ------------------------------------------------------------------
     # Overall status
     # ------------------------------------------------------------------
 
-    assert (
-        manifest.status
-        == CaptureStatus.SUCCESS
-    )
+    assert manifest.status == CaptureStatus.SUCCESS
 
     assert manifest.completed_at is not None
 
@@ -289,24 +246,17 @@ def test_capture_successfully_acquires_and_persists_evidence():
 
     repository.save_audit.assert_called_once()
 
-    args, kwargs = (
-        repository.save_audit.call_args
-    )
+    args, kwargs = repository.save_audit.call_args
 
     assert args == (evidence,)
 
-    assert (
-        kwargs["capture_id"]
-        == manifest.capture_id
-    )
+    assert kwargs["capture_id"] == manifest.capture_id
 
     # ------------------------------------------------------------------
     # Completed manifest persistence
     # ------------------------------------------------------------------
 
-    repository.update_manifest.assert_called_once_with(
-        manifest
-    )
+    repository.update_manifest.assert_called_once_with(manifest)
 
 
 # ============================================================================
@@ -328,19 +278,13 @@ def test_manifest_is_persisted_before_evidence():
 
     collector = Mock()
 
-    collector.collect.return_value = (
-        evidence
-    )
+    collector.collect.return_value = evidence
 
     repository = create_mock_repository()
 
-    registry = Mock(
-        spec=CollectorRegistry
-    )
+    registry = Mock(spec=CollectorRegistry)
 
-    registry.get.return_value = (
-        collector
-    )
+    registry.get.return_value = collector
 
     service = EvidenceCaptureService(
         registry=registry,
@@ -350,35 +294,23 @@ def test_manifest_is_persisted_before_evidence():
     call_order = []
 
     def save_manifest(manifest):
-        call_order.append(
-            "save_manifest"
-        )
+        call_order.append("save_manifest")
 
     def save_audit(
         evidence,
         *,
         capture_id,
     ):
-        call_order.append(
-            "save_audit"
-        )
+        call_order.append("save_audit")
 
     def update_manifest(manifest):
-        call_order.append(
-            "update_manifest"
-        )
+        call_order.append("update_manifest")
 
-    repository.save_manifest.side_effect = (
-        save_manifest
-    )
+    repository.save_manifest.side_effect = save_manifest
 
-    repository.save_audit.side_effect = (
-        save_audit
-    )
+    repository.save_audit.side_effect = save_audit
 
-    repository.update_manifest.side_effect = (
-        update_manifest
-    )
+    repository.update_manifest.side_effect = update_manifest
 
     service.capture(
         target=target,
@@ -409,9 +341,7 @@ def test_capture_id_is_propagated_to_evidence():
 
     collector = Mock()
 
-    collector.collect.return_value = (
-        evidence
-    )
+    collector.collect.return_value = evidence
 
     (
         service,
@@ -428,14 +358,9 @@ def test_capture_id_is_propagated_to_evidence():
 
     repository.save_audit.assert_called_once()
 
-    _, kwargs = (
-        repository.save_audit.call_args
-    )
+    _, kwargs = repository.save_audit.call_args
 
-    assert (
-        kwargs["capture_id"]
-        == manifest.capture_id
-    )
+    assert kwargs["capture_id"] == manifest.capture_id
 
 
 # ============================================================================
@@ -451,15 +376,11 @@ def test_successful_source_records_integrity_metadata():
 
     target = create_target()
 
-    evidence = create_audit_evidence(
-        raw_data=b"known raw evidence"
-    )
+    evidence = create_audit_evidence(raw_data=b"known raw evidence")
 
     collector = Mock()
 
-    collector.collect.return_value = (
-        evidence
-    )
+    collector.collect.return_value = evidence
 
     (
         service,
@@ -476,15 +397,9 @@ def test_successful_source_records_integrity_metadata():
 
     result = manifest.sources[0]
 
-    assert (
-        result.sha256
-        == evidence.sha256
-    )
+    assert result.sha256 == evidence.sha256
 
-    assert (
-        result.size_bytes
-        == len(evidence.raw_data)
-    )
+    assert result.size_bytes == len(evidence.raw_data)
 
 
 # ============================================================================
@@ -502,11 +417,9 @@ def test_source_failure_does_not_abort_capture():
 
     collector = Mock()
 
-    collector.collect.side_effect = (
-        CollectorError(
-            "audit acquisition failed",
-            source="auditd",
-        )
+    collector.collect.side_effect = CollectorError(
+        "audit acquisition failed",
+        source="auditd",
     )
 
     (
@@ -538,15 +451,9 @@ def test_source_failure_does_not_abort_capture():
 
     assert result.source == "auditd"
 
-    assert (
-        result.status
-        == SourceCaptureStatus.FAILED
-    )
+    assert result.status == SourceCaptureStatus.FAILED
 
-    assert (
-        "audit acquisition failed"
-        in result.error
-    )
+    assert "audit acquisition failed" in result.error
 
     # ------------------------------------------------------------------
     # No evidence should be persisted
@@ -558,14 +465,9 @@ def test_source_failure_does_not_abort_capture():
     # Final manifest should still be persisted
     # ------------------------------------------------------------------
 
-    repository.update_manifest.assert_called_once_with(
-        manifest
-    )
+    repository.update_manifest.assert_called_once_with(manifest)
 
-    assert (
-        manifest.status
-        == CaptureStatus.FAILED
-    )
+    assert manifest.status == CaptureStatus.FAILED
 
 
 # ============================================================================
@@ -583,9 +485,7 @@ def test_invalid_evidence_type_is_recorded_as_failure():
 
     collector = Mock()
 
-    collector.collect.return_value = (
-        "this is not evidence"
-    )
+    collector.collect.return_value = "this is not evidence"
 
     (
         service,
@@ -600,30 +500,19 @@ def test_invalid_evidence_type_is_recorded_as_failure():
         sources=["auditd"],
     )
 
-    registry.get.assert_called_once_with(
-        "auditd"
-    )
+    registry.get.assert_called_once_with("auditd")
 
     assert len(manifest.sources) == 1
 
     result = manifest.sources[0]
 
-    assert (
-        result.status
-        == SourceCaptureStatus.FAILED
-    )
+    assert result.status == SourceCaptureStatus.FAILED
 
-    assert (
-        "Unsupported evidence type"
-        in result.error
-    )
+    assert "Unsupported evidence type" in result.error
 
     repository.save_audit.assert_not_called()
 
-    assert (
-        manifest.status
-        == CaptureStatus.FAILED
-    )
+    assert manifest.status == CaptureStatus.FAILED
 
 
 # ============================================================================
@@ -639,9 +528,7 @@ def test_multiple_successful_sources_produce_successful_manifest():
 
     target = create_target()
 
-    evidence_1 = create_audit_evidence(
-        evidence_id="auditd:event-001"
-    )
+    evidence_1 = create_audit_evidence(evidence_id="auditd:event-001")
 
     evidence_2 = create_audit_evidence(
         evidence_id="auditd:event-002",
@@ -650,19 +537,13 @@ def test_multiple_successful_sources_produce_successful_manifest():
 
     collector_1 = Mock()
 
-    collector_1.collect.return_value = (
-        evidence_1
-    )
+    collector_1.collect.return_value = evidence_1
 
     collector_2 = Mock()
 
-    collector_2.collect.return_value = (
-        evidence_2
-    )
+    collector_2.collect.return_value = evidence_2
 
-    registry = Mock(
-        spec=CollectorRegistry
-    )
+    registry = Mock(spec=CollectorRegistry)
 
     registry.get.side_effect = [
         collector_1,
@@ -687,20 +568,12 @@ def test_multiple_successful_sources_produce_successful_manifest():
     assert len(manifest.sources) == 2
 
     assert all(
-        result.status
-        == SourceCaptureStatus.SUCCESS
-        for result in manifest.sources
+        result.status == SourceCaptureStatus.SUCCESS for result in manifest.sources
     )
 
-    assert (
-        manifest.status
-        == CaptureStatus.SUCCESS
-    )
+    assert manifest.status == CaptureStatus.SUCCESS
 
-    assert (
-        repository.save_audit.call_count
-        == 2
-    )
+    assert repository.save_audit.call_count == 2
 
 
 # ============================================================================
@@ -716,30 +589,20 @@ def test_partial_capture_when_one_source_fails():
 
     target = create_target()
 
-    successful_evidence = (
-        create_audit_evidence(
-            evidence_id="auditd:event-001"
-        )
-    )
+    successful_evidence = create_audit_evidence(evidence_id="auditd:event-001")
 
     successful_collector = Mock()
 
-    successful_collector.collect.return_value = (
-        successful_evidence
-    )
+    successful_collector.collect.return_value = successful_evidence
 
     failing_collector = Mock()
 
-    failing_collector.collect.side_effect = (
-        CollectorError(
-            "source unavailable",
-            source="other-source",
-        )
+    failing_collector.collect.side_effect = CollectorError(
+        "source unavailable",
+        source="other-source",
     )
 
-    registry = Mock(
-        spec=CollectorRegistry
-    )
+    registry = Mock(spec=CollectorRegistry)
 
     registry.get.side_effect = [
         successful_collector,
@@ -763,31 +626,16 @@ def test_partial_capture_when_one_source_fails():
 
     assert len(manifest.sources) == 2
 
-    statuses = [
-        result.status
-        for result in manifest.sources
-    ]
+    statuses = [result.status for result in manifest.sources]
 
-    assert (
-        SourceCaptureStatus.SUCCESS
-        in statuses
-    )
+    assert SourceCaptureStatus.SUCCESS in statuses
 
-    assert (
-        SourceCaptureStatus.FAILED
-        in statuses
-    )
+    assert SourceCaptureStatus.FAILED in statuses
 
-    assert (
-        manifest.status
-        == CaptureStatus.PARTIAL
-    )
+    assert manifest.status == CaptureStatus.PARTIAL
 
     # Only the successful evidence is persisted.
-    assert (
-        repository.save_audit.call_count
-        == 1
-    )
+    assert repository.save_audit.call_count == 1
 
 
 # ============================================================================
@@ -805,20 +653,14 @@ def test_all_failed_sources_produce_failed_manifest():
 
     collector = Mock()
 
-    collector.collect.side_effect = (
-        CollectorError(
-            "audit source unavailable",
-            source="auditd",
-        )
+    collector.collect.side_effect = CollectorError(
+        "audit source unavailable",
+        source="auditd",
     )
 
-    registry = Mock(
-        spec=CollectorRegistry
-    )
+    registry = Mock(spec=CollectorRegistry)
 
-    registry.get.return_value = (
-        collector
-    )
+    registry.get.return_value = collector
 
     repository = create_mock_repository()
 
@@ -838,15 +680,10 @@ def test_all_failed_sources_produce_failed_manifest():
     assert len(manifest.sources) == 2
 
     assert all(
-        result.status
-        == SourceCaptureStatus.FAILED
-        for result in manifest.sources
+        result.status == SourceCaptureStatus.FAILED for result in manifest.sources
     )
 
-    assert (
-        manifest.status
-        == CaptureStatus.FAILED
-    )
+    assert manifest.status == CaptureStatus.FAILED
 
     repository.save_audit.assert_not_called()
 
@@ -864,15 +701,11 @@ def test_missing_collector_is_recorded_as_source_failure():
 
     target = create_target()
 
-    registry = Mock(
-        spec=CollectorRegistry
-    )
+    registry = Mock(spec=CollectorRegistry)
 
-    registry.get.side_effect = (
-        CollectorError(
-            "collector not registered",
-            source="auditd",
-        )
+    registry.get.side_effect = CollectorError(
+        "collector not registered",
+        source="auditd",
     )
 
     repository = create_mock_repository()
@@ -891,22 +724,13 @@ def test_missing_collector_is_recorded_as_source_failure():
 
     result = manifest.sources[0]
 
-    assert (
-        result.status
-        == SourceCaptureStatus.FAILED
-    )
+    assert result.status == SourceCaptureStatus.FAILED
 
-    assert (
-        "collector not registered"
-        in result.error
-    )
+    assert "collector not registered" in result.error
 
     repository.save_audit.assert_not_called()
 
-    assert (
-        manifest.status
-        == CaptureStatus.FAILED
-    )
+    assert manifest.status == CaptureStatus.FAILED
 
 
 # ============================================================================
@@ -926,25 +750,15 @@ def test_evidence_repository_failure_is_recorded_as_source_failure():
 
     collector = Mock()
 
-    collector.collect.return_value = (
-        evidence
-    )
+    collector.collect.return_value = evidence
 
-    registry = Mock(
-        spec=CollectorRegistry
-    )
+    registry = Mock(spec=CollectorRegistry)
 
-    registry.get.return_value = (
-        collector
-    )
+    registry.get.return_value = collector
 
     repository = create_mock_repository()
 
-    repository.save_audit.side_effect = (
-        RuntimeError(
-            "database write failed"
-        )
-    )
+    repository.save_audit.side_effect = RuntimeError("database write failed")
 
     service = EvidenceCaptureService(
         registry=registry,
@@ -958,26 +772,15 @@ def test_evidence_repository_failure_is_recorded_as_source_failure():
 
     result = manifest.sources[0]
 
-    assert (
-        result.status
-        == SourceCaptureStatus.FAILED
-    )
+    assert result.status == SourceCaptureStatus.FAILED
 
-    assert (
-        "database write failed"
-        in result.error
-    )
+    assert "database write failed" in result.error
 
-    assert (
-        manifest.status
-        == CaptureStatus.FAILED
-    )
+    assert manifest.status == CaptureStatus.FAILED
 
     repository.save_audit.assert_called_once()
 
-    repository.update_manifest.assert_called_once_with(
-        manifest
-    )
+    repository.update_manifest.assert_called_once_with(manifest)
 
 
 # ============================================================================
@@ -997,9 +800,7 @@ def test_completed_manifest_is_persisted():
 
     collector = Mock()
 
-    collector.collect.return_value = (
-        evidence
-    )
+    collector.collect.return_value = evidence
 
     (
         service,
@@ -1014,15 +815,11 @@ def test_completed_manifest_is_persisted():
         sources=["auditd"],
     )
 
-    repository.update_manifest.assert_called_once_with(
-        manifest
-    )
+    repository.update_manifest.assert_called_once_with(manifest)
 
     assert manifest.sources
 
-    assert (
-        manifest.completed_at is not None
-    )
+    assert manifest.completed_at is not None
 
 
 # ============================================================================
@@ -1040,9 +837,7 @@ def test_empty_source_list_completes_without_collectors():
 
     target = create_target()
 
-    registry = Mock(
-        spec=CollectorRegistry
-    )
+    registry = Mock(spec=CollectorRegistry)
 
     repository = create_mock_repository()
 
@@ -1070,17 +865,10 @@ def test_empty_source_list_completes_without_collectors():
     # Initial and completed manifests should still be persisted.
     repository.save_manifest.assert_called_once()
 
-    repository.update_manifest.assert_called_once_with(
-        manifest
-    )
+    repository.update_manifest.assert_called_once_with(manifest)
 
     # With zero failed and zero successful sources,
     # CaptureManifest.complete() returns SUCCESS.
-    assert (
-        manifest.status
-        == CaptureStatus.SUCCESS
-    )
+    assert manifest.status == CaptureStatus.SUCCESS
 
-    assert (
-        manifest.completed_at is not None
-    )
+    assert manifest.completed_at is not None

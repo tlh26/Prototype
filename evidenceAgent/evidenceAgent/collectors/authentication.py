@@ -15,27 +15,19 @@ class AuthenticationCollector:
 
     PATTERNS = [
         (
-            re.compile(
-                r"Accepted .* for (\S+) from (\S+)"
-            ),
+            re.compile(r"Accepted .* for (\S+) from (\S+)"),
             EventType.LOGIN_SUCCESS,
         ),
         (
-            re.compile(
-                r"Failed .* for (?:invalid user )?(\S+) from (\S+)"
-            ),
+            re.compile(r"Failed .* for (?:invalid user )?(\S+) from (\S+)"),
             EventType.LOGIN_FAILURE,
         ),
         (
-            re.compile(
-                r"session opened for user (\S+)"
-            ),
+            re.compile(r"session opened for user (\S+)"),
             EventType.SESSION_CREATED,
         ),
         (
-            re.compile(
-                r"session closed for user (\S+)"
-            ),
+            re.compile(r"session closed for user (\S+)"),
             EventType.SESSION_TERMINATED,
         ),
     ]
@@ -65,13 +57,9 @@ class AuthenticationCollector:
 
         events = []
 
-        with self.path.open(
-            "rb"
-        ) as handle:
+        with self.path.open("rb") as handle:
 
-            handle.seek(
-                self.offset
-            )
+            handle.seek(self.offset)
 
             data = handle.read()
 
@@ -104,9 +92,11 @@ class AuthenticationCollector:
                     source="auth.log",
                     source_path=str(self.path),
                     actor=actor,
-                    resource=match.group(2)
-                    if match.lastindex and match.lastindex >= 2
-                    else None,
+                    resource=(
+                        match.group(2)
+                        if match.lastindex and match.lastindex >= 2
+                        else None
+                    ),
                     details={
                         "raw_line": text,
                     },
@@ -115,9 +105,7 @@ class AuthenticationCollector:
 
                 events.append(event)
 
-                self.state.set_sequence(
-                    event.sequence
-                )
+                self.state.set_sequence(event.sequence)
 
                 break
 

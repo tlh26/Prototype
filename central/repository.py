@@ -1,15 +1,25 @@
+from __future__ import annotations
+
 import json
-import sqlite3
+
+from psycopg import Connection
 
 from evidenceAgent.evidenceAgent.models import EvidenceEvent
 
 
 class EvidenceRepository:
 
-    def __init__(self, connection: sqlite3.Connection):
+    def __init__(
+        self,
+        connection: Connection,
+    ) -> None:
         self.connection = connection
 
-    def save(self, event: EvidenceEvent) -> None:
+    def save(
+        self,
+        event: EvidenceEvent,
+    ) -> None:
+
         self.connection.execute(
             """
             INSERT INTO evidence_events (
@@ -31,7 +41,11 @@ class EvidenceRepository:
                 sha256,
                 created_at
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (
+                %s, %s, %s, %s, %s, %s, %s,
+                %s, %s, %s, %s, %s, %s, %s,
+                %s, %s, %s
+            )
             """,
             (
                 str(event.event_id),
@@ -59,12 +73,15 @@ class EvidenceRepository:
 
         self.connection.commit()
 
-    def get(self, event_id: str):
+    def get(
+        self,
+        event_id: str,
+    ):
         return self.connection.execute(
             """
             SELECT *
             FROM evidence_events
-            WHERE event_id = ?
+            WHERE event_id = %s
             """,
             (event_id,),
         ).fetchone()
@@ -80,14 +97,18 @@ class EvidenceRepository:
             WHERE 1 = 1
         """
 
-        parameters = []
+        parameters: list[object] = []
 
         if tenant_id:
-            query += " AND tenant_id = ?"
+            query += """
+                AND tenant_id = %s
+            """
             parameters.append(tenant_id)
 
         if instance_name:
-            query += " AND instance_name = ?"
+            query += """
+                AND instance_name = %s
+            """
             parameters.append(instance_name)
 
         query += """

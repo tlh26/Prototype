@@ -20,6 +20,7 @@ class HashingService:
     ) -> bool:
         actual_hash = HashingService.sha256(data)
         return actual_hash == expected_hash
+
     @staticmethod
     def md5(data: str | bytes) -> str:
         if isinstance(data, str):

@@ -21,9 +21,7 @@ def test_batch_can_be_stored(
     tmp_path,
     sample_batch,
 ):
-    spool = EvidenceSpool(
-        str(tmp_path / "spool")
-    )
+    spool = EvidenceSpool(str(tmp_path / "spool"))
 
     path = spool.store(sample_batch)
 
@@ -35,9 +33,7 @@ def test_pending_returns_stored_batches(
     tmp_path,
     sample_batch,
 ):
-    spool = EvidenceSpool(
-        str(tmp_path / "spool")
-    )
+    spool = EvidenceSpool(str(tmp_path / "spool"))
 
     spool.store(sample_batch)
 
@@ -50,9 +46,7 @@ def test_pending_is_sorted_by_filename(
     tmp_path,
     sample_envelope,
 ):
-    spool = EvidenceSpool(
-        str(tmp_path / "spool")
-    )
+    spool = EvidenceSpool(str(tmp_path / "spool"))
 
     from evidenceAgent.evidenceAgent.transportModels import (
         EvidenceBatch,
@@ -91,38 +85,26 @@ def test_pending_is_sorted_by_filename(
 
     assert len(pending) == 2
 
-    assert pending[0].name.startswith(
-        "00000000000000000001"
-    )
+    assert pending[0].name.startswith("00000000000000000001")
 
-    assert pending[1].name.startswith(
-        "00000000000000000002"
-    )
+    assert pending[1].name.startswith("00000000000000000002")
 
 
 def test_spooled_batch_contains_raw_data_b64(
     tmp_path,
     sample_batch,
 ):
-    spool = EvidenceSpool(
-        str(tmp_path / "spool")
-    )
+    spool = EvidenceSpool(str(tmp_path / "spool"))
 
     path = spool.store(sample_batch)
 
-    payload = json.loads(
-        path.read_text(encoding="utf-8")
-    )
+    payload = json.loads(path.read_text(encoding="utf-8"))
 
     envelope = sample_batch.evidence[0]
 
-    assert payload["evidence"][0]["raw_data_b64"] == (
-        envelope.raw_data_b64
-    )
+    assert payload["evidence"][0]["raw_data_b64"] == (envelope.raw_data_b64)
 
-    decoded = base64.b64decode(
-        payload["evidence"][0]["raw_data_b64"]
-    )
+    decoded = base64.b64decode(payload["evidence"][0]["raw_data_b64"])
 
     assert decoded == b"test evidence\n"
 
@@ -131,9 +113,7 @@ def test_spooled_batch_can_be_loaded(
     tmp_path,
     sample_batch,
 ):
-    spool = EvidenceSpool(
-        str(tmp_path / "spool")
-    )
+    spool = EvidenceSpool(str(tmp_path / "spool"))
 
     path = spool.store(sample_batch)
 
@@ -146,9 +126,7 @@ def test_spool_batch_can_be_removed(
     tmp_path,
     sample_batch,
 ):
-    spool = EvidenceSpool(
-        str(tmp_path / "spool")
-    )
+    spool = EvidenceSpool(str(tmp_path / "spool"))
 
     path = spool.store(sample_batch)
 
@@ -163,9 +141,7 @@ def test_remove_missing_spool_file_is_safe(
     tmp_path,
     sample_batch,
 ):
-    spool = EvidenceSpool(
-        str(tmp_path / "spool")
-    )
+    spool = EvidenceSpool(str(tmp_path / "spool"))
 
     path = spool.store(sample_batch)
 

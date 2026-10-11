@@ -7,7 +7,6 @@ import sqlite3
 import sys
 from pathlib import Path
 
-
 # ============================================================================
 # Project imports
 # ============================================================================
@@ -19,7 +18,6 @@ if str(PROJECT_ROOT) not in sys.path:
 
 
 from evidenceAgent.evidenceAgent.spool import EvidenceSpool
-
 
 # ============================================================================
 # Configuration
@@ -53,6 +51,7 @@ CENTRAL_DB = os.getenv(
 # Output helpers
 # ============================================================================
 
+
 def section(number: int, title: str) -> None:
     print()
     print("=" * 78)
@@ -81,15 +80,14 @@ def require(condition: bool, message: str) -> None:
 # Spool
 # ============================================================================
 
+
 def load_spool() -> tuple[EvidenceSpool, Path]:
     section(
         1,
         "Locating retained real host-agent spool",
     )
 
-    info(
-        f"Spool file:\n  {SPOOL_FILE}"
-    )
+    info(f"Spool file:\n  {SPOOL_FILE}")
 
     require(
         SPOOL_FILE.exists(),
@@ -105,13 +103,9 @@ def load_spool() -> tuple[EvidenceSpool, Path]:
         f"Spool path is not a regular file: {SPOOL_FILE}",
     )
 
-    spool = EvidenceSpool(
-        str(SPOOL_FILE.parent)
-    )
+    spool = EvidenceSpool(str(SPOOL_FILE.parent))
 
-    passed(
-        f"Spool file exists: {SPOOL_FILE}"
-    )
+    passed(f"Spool file exists: {SPOOL_FILE}")
 
     return spool, SPOOL_FILE
 
@@ -125,16 +119,11 @@ def load_batch(
         "Loading EvidenceBatch through EvidenceSpool",
     )
 
-    batch = spool.load(
-        spool_path
-    )
+    batch = spool.load(spool_path)
 
     require(
         batch.agent_id == "agent-host-smoke-test",
-        (
-            "Unexpected agent_id: "
-            f"{batch.agent_id!r}"
-        ),
+        ("Unexpected agent_id: " f"{batch.agent_id!r}"),
     )
 
     require(
@@ -142,17 +131,11 @@ def load_batch(
         "Spool contains an empty EvidenceBatch.",
     )
 
-    print(
-        f"  agent_id:       {batch.agent_id}"
-    )
+    print(f"  agent_id:       {batch.agent_id}")
 
-    print(
-        f"  evidence count: {len(batch.evidence)}"
-    )
+    print(f"  evidence count: {len(batch.evidence)}")
 
-    passed(
-        "EvidenceSpool.load() reconstructed the EvidenceBatch."
-    )
+    passed("EvidenceSpool.load() reconstructed the EvidenceBatch.")
 
     return batch
 
@@ -160,6 +143,7 @@ def load_batch(
 # ============================================================================
 # Evidence integrity
 # ============================================================================
+
 
 def verify_envelope(envelope) -> None:
     try:
@@ -169,8 +153,7 @@ def verify_envelope(envelope) -> None:
         )
     except Exception as exc:
         raise RuntimeError(
-            f"Invalid Base64 for evidence "
-            f"{envelope.evidence_id}"
+            f"Invalid Base64 for evidence " f"{envelope.evidence_id}"
         ) from exc
 
     require(
@@ -183,9 +166,7 @@ def verify_envelope(envelope) -> None:
         ),
     )
 
-    actual_sha256 = hashlib.sha256(
-        raw_data
-    ).hexdigest()
+    actual_sha256 = hashlib.sha256(raw_data).hexdigest()
 
     require(
         actual_sha256 == envelope.sha256,
@@ -205,19 +186,15 @@ def verify_batch_integrity(batch) -> None:
     )
 
     for envelope in batch.evidence:
-        verify_envelope(
-            envelope
-        )
+        verify_envelope(envelope)
 
-    passed(
-        "All spool envelopes passed Base64, size, "
-        "and SHA-256 verification."
-    )
+    passed("All spool envelopes passed Base64, size, " "and SHA-256 verification.")
 
 
 # ============================================================================
 # Spool lifecycle inspection
 # ============================================================================
+
 
 def verify_spool_present(
     spool: EvidenceSpool,
@@ -230,14 +207,10 @@ def verify_spool_present(
 
     pending = spool.pending()
 
-    print(
-        f"  pending entries: {len(pending)}"
-    )
+    print(f"  pending entries: {len(pending)}")
 
     for path in pending:
-        print(
-            f"    {path}"
-        )
+        print(f"    {path}")
 
     require(
         spool_path.exists(),
@@ -249,14 +222,13 @@ def verify_spool_present(
         "Expected spool file to appear in pending().",
     )
 
-    passed(
-        "Spool entry is present and pending."
-    )
+    passed("Spool entry is present and pending.")
 
 
 # ============================================================================
 # Direct EvidenceSpool.remove() verification
 # ============================================================================
+
 
 def verify_spool_remove(
     spool: EvidenceSpool,
@@ -281,13 +253,9 @@ def verify_spool_remove(
         "Cannot test remove(): spool file is already absent.",
     )
 
-    info(
-        f"Calling EvidenceSpool.remove(): {spool_path}"
-    )
+    info(f"Calling EvidenceSpool.remove(): {spool_path}")
 
-    spool.remove(
-        spool_path
-    )
+    spool.remove(spool_path)
 
     require(
         not spool_path.exists(),
@@ -299,15 +267,13 @@ def verify_spool_remove(
         "Removed spool still appears in pending().",
     )
 
-    passed(
-        "EvidenceSpool.remove() successfully removed "
-        "the spool entry."
-    )
+    passed("EvidenceSpool.remove() successfully removed " "the spool entry.")
 
 
 # ============================================================================
 # SQLite
 # ============================================================================
+
 
 def open_database() -> sqlite3.Connection:
     section(
@@ -324,28 +290,20 @@ def open_database() -> sqlite3.Connection:
         ),
     )
 
-    database = Path(
-        CENTRAL_DB
-    )
+    database = Path(CENTRAL_DB)
 
     require(
         database.exists(),
         f"Central SQLite database does not exist: {database}",
     )
 
-    info(
-        f"Database: {database}"
-    )
+    info(f"Database: {database}")
 
-    connection = sqlite3.connect(
-        database
-    )
+    connection = sqlite3.connect(database)
 
     connection.row_factory = sqlite3.Row
 
-    passed(
-        "Central SQLite database opened."
-    )
+    passed("Central SQLite database opened.")
 
     return connection
 
@@ -353,16 +311,12 @@ def open_database() -> sqlite3.Connection:
 def sqlite_count(
     connection: sqlite3.Connection,
 ) -> int:
-    row = connection.execute(
-        """
+    row = connection.execute("""
         SELECT COUNT(*) AS count
         FROM evidence
-        """
-    ).fetchone()
+        """).fetchone()
 
-    return int(
-        row["count"]
-    )
+    return int(row["count"])
 
 
 def verify_sqlite(
@@ -374,13 +328,9 @@ def verify_sqlite(
         "Inspecting persisted evidence directly in SQLite",
     )
 
-    total = sqlite_count(
-        connection
-    )
+    total = sqlite_count(connection)
 
-    print(
-        f"  total evidence rows: {total}"
-    )
+    print(f"  total evidence rows: {total}")
 
     missing = []
     mismatches = []
@@ -411,24 +361,16 @@ def verify_sqlite(
             FROM evidence
             WHERE evidence_id = ?
             """,
-            (
-                envelope.evidence_id,
-            ),
+            (envelope.evidence_id,),
         ).fetchone()
 
         if row is None:
-            missing.append(
-                envelope.evidence_id
-            )
+            missing.append(envelope.evidence_id)
             continue
 
-        raw_data = bytes(
-            row["raw_data"]
-        )
+        raw_data = bytes(row["raw_data"])
 
-        actual_sha256 = hashlib.sha256(
-            raw_data
-        ).hexdigest()
+        actual_sha256 = hashlib.sha256(raw_data).hexdigest()
 
         if (
             row["sha256"] != envelope.sha256
@@ -441,25 +383,18 @@ def verify_sqlite(
             or row["source_path"] != envelope.source_path
             or row["acquisition_layer"] != envelope.acquisition_layer
             or row["acquired_from"] != envelope.acquired_from
-            or row["attribution_method"]
-            != envelope.attribution_method
-            or row["sequence_start"]
-            != envelope.sequence_start
-            or row["sequence_end"]
-            != envelope.sequence_end
+            or row["attribution_method"] != envelope.attribution_method
+            or row["sequence_start"] != envelope.sequence_start
+            or row["sequence_end"] != envelope.sequence_end
         ):
-            mismatches.append(
-                envelope.evidence_id
-            )
+            mismatches.append(envelope.evidence_id)
 
         if (
             actual_sha256 != envelope.sha256
             or actual_sha256 != row["sha256"]
             or len(raw_data) != row["size_bytes"]
         ):
-            corrupt.append(
-                envelope.evidence_id
-            )
+            corrupt.append(envelope.evidence_id)
 
     require(
         not missing,
@@ -488,40 +423,27 @@ def verify_sqlite(
         ),
     )
 
-    duplicate_rows = connection.execute(
-        """
+    duplicate_rows = connection.execute("""
         SELECT
             evidence_id,
             COUNT(*) AS count
         FROM evidence
         GROUP BY evidence_id
         HAVING COUNT(*) > 1
-        """
-    ).fetchall()
+        """).fetchall()
 
     require(
         not duplicate_rows,
-        (
-            "Duplicate evidence IDs found in SQLite: "
-            f"{len(duplicate_rows)}"
-        ),
+        ("Duplicate evidence IDs found in SQLite: " f"{len(duplicate_rows)}"),
     )
 
-    passed(
-        "Every spool evidence ID exists in SQLite."
-    )
+    passed("Every spool evidence ID exists in SQLite.")
 
-    passed(
-        "Persisted raw BLOBs have matching size and SHA-256."
-    )
+    passed("Persisted raw BLOBs have matching size and SHA-256.")
 
-    passed(
-        "Persisted provenance and sequence metadata match."
-    )
+    passed("Persisted provenance and sequence metadata match.")
 
-    passed(
-        "SQLite contains no duplicate evidence IDs."
-    )
+    passed("SQLite contains no duplicate evidence IDs.")
 
     return total
 
@@ -529,6 +451,7 @@ def verify_sqlite(
 # ============================================================================
 # Actual delivery/retry boundary
 # ============================================================================
+
 
 def run_actual_host_delivery(
     spool,
@@ -593,6 +516,7 @@ def run_actual_host_delivery(
 # Outage / retry test
 # ============================================================================
 
+
 def verify_outage_retains_spool(
     spool,
     spool_path,
@@ -634,6 +558,7 @@ def verify_outage_retains_spool(
 # Successful retry
 # ============================================================================
 
+
 def verify_successful_retry_removes_spool(
     spool,
     spool_path,
@@ -664,6 +589,7 @@ def verify_successful_retry_removes_spool(
 # Main
 # ============================================================================
 
+
 def main() -> None:
 
     print()
@@ -693,9 +619,7 @@ def main() -> None:
         spool_path,
     )
 
-    verify_batch_integrity(
-        batch
-    )
+    verify_batch_integrity(batch)
 
     verify_spool_present(
         spool,
@@ -709,13 +633,9 @@ def main() -> None:
     connection = open_database()
 
     try:
-        before_count = sqlite_count(
-            connection
-        )
+        before_count = sqlite_count(connection)
 
-        info(
-            f"SQLite rows before delivery: {before_count}"
-        )
+        info(f"SQLite rows before delivery: {before_count}")
 
         # --------------------------------------------------------------
         # Direct persistence verification.
@@ -734,13 +654,9 @@ def main() -> None:
         except RuntimeError as exc:
             persistence_already_exists = False
 
-            warning(
-                "Batch is not yet present in SQLite."
-            )
+            warning("Batch is not yet present in SQLite.")
 
-            info(
-                str(exc)
-            )
+            info(str(exc))
 
         # --------------------------------------------------------------
         # Actual delivery.
@@ -765,21 +681,16 @@ def main() -> None:
         )
 
         print()
-        print(
-            f"  SQLite rows before: {before_count}"
-        )
+        print(f"  SQLite rows before: {before_count}")
 
-        print(
-            f"  SQLite rows after:  {after_count}"
-        )
+        print(f"  SQLite rows after:  {after_count}")
 
         # --------------------------------------------------------------
         # Duplicate protection.
         # --------------------------------------------------------------
 
         require(
-            after_count == before_count
-            or after_count >= len(batch.evidence),
+            after_count == before_count or after_count >= len(batch.evidence),
             (
                 "Unexpected SQLite row-count transition: "
                 f"before={before_count}, "
@@ -787,9 +698,7 @@ def main() -> None:
             ),
         )
 
-        passed(
-            "SQLite persistence contains the expected evidence."
-        )
+        passed("SQLite persistence contains the expected evidence.")
 
     finally:
         connection.close()
@@ -805,9 +714,7 @@ def main() -> None:
 
     if spool_path.exists():
 
-        warning(
-            "Spool still exists."
-        )
+        warning("Spool still exists.")
 
         info(
             "This means the actual delivery component has not yet "
@@ -816,9 +723,7 @@ def main() -> None:
 
     else:
 
-        passed(
-            "Successfully delivered spool has been removed."
-        )
+        passed("Successfully delivered spool has been removed.")
 
     # ------------------------------------------------------------------
     # Final.
@@ -829,9 +734,7 @@ def main() -> None:
         "Final result",
     )
 
-    print(
-        "REAL SPOOL -> CENTRAL DELIVERY / SQLITE TEST PASSED"
-    )
+    print("REAL SPOOL -> CENTRAL DELIVERY / SQLITE TEST PASSED")
 
     print()
     print("Validated boundaries:")
@@ -851,9 +754,7 @@ def main() -> None:
     print("  [PASS] Spool removal after success")
 
     print()
-    print(
-        f"Evidence in batch: {len(batch.evidence)}"
-    )
+    print(f"Evidence in batch: {len(batch.evidence)}")
 
 
 if __name__ == "__main__":

@@ -36,25 +36,16 @@ class CentralEvidenceClient:
 
         payload = event.model_dump()
 
-        payload["timestamp"] = (
-            event.timestamp.isoformat()
-        )
+        payload["timestamp"] = event.timestamp.isoformat()
 
-        payload["created_at"] = (
-            event.created_at.isoformat()
-        )
+        payload["created_at"] = event.created_at.isoformat()
 
         # Preserve the original evidence bytes.
         # Central expects raw_data to be Base64 encoded.
-        payload["raw_data"] = base64.b64encode(
-            event.raw_data
-        ).decode("ascii")
+        payload["raw_data"] = base64.b64encode(event.raw_data).decode("ascii")
 
         response = requests.post(
-            (
-                f"{self.base_url}"
-                "/api/v1/evidence/events"
-            ),
+            (f"{self.base_url}" "/api/v1/evidence/events"),
             json=payload,
             headers=self._headers(),
             timeout=self.timeout,
@@ -86,15 +77,10 @@ class CentralEvidenceClient:
         NOT be Base64 encoded again here.
         """
 
-        payload = batch.model_dump(
-            mode="json"
-        )
+        payload = batch.model_dump(mode="json")
 
         response = requests.post(
-            (
-                f"{self.base_url}"
-                "/api/v1/evidence/batches"
-            ),
+            (f"{self.base_url}" "/api/v1/evidence/batches"),
             json=payload,
             headers=self._headers(),
             timeout=self.timeout,

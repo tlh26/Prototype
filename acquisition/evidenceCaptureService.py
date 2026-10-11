@@ -109,8 +109,7 @@ class EvidenceCaptureService:
 
             if not isinstance(evidence, AuditEvidence):
                 raise CollectorError(
-                    f"Unsupported evidence type returned "
-                    f"by collector '{source}'",
+                    f"Unsupported evidence type returned " f"by collector '{source}'",
                     source=source,
                 )
 
@@ -152,8 +151,7 @@ class EvidenceCaptureService:
 
         if not isinstance(collection, AuditCollectionResult):
             raise CollectorError(
-                "Audit collector returned an unsupported "
-                "collection result",
+                "Audit collector returned an unsupported " "collection result",
                 source=source,
             )
 
@@ -161,8 +159,7 @@ class EvidenceCaptureService:
         for evidence in collection.evidence:
             if not isinstance(evidence, AuditEvidence):
                 raise CollectorError(
-                    "Audit collector returned an unsupported "
-                    "evidence type",
+                    "Audit collector returned an unsupported " "evidence type",
                     source=source,
                 )
 
@@ -176,9 +173,7 @@ class EvidenceCaptureService:
         # Do not advance the checkpoint until all evidence has been
         # persisted successfully. Otherwise a persistence failure could
         # cause evidence to be skipped during the next capture.
-        collector.commit_checkpoint(
-            collection.checkpoint
-        )
+        collector.commit_checkpoint(collection.checkpoint)
 
         # A successful collection may legitimately contain no new
         # evidence, for example when the audit log has not changed.

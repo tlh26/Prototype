@@ -41,10 +41,7 @@ class FileCollector:
         #     [config.watched_directory]
         #
         # so this also works when watched_directory is a Path object.
-        self.paths: tuple[str, ...] = tuple(
-            str(path)
-            for path in paths
-        )
+        self.paths: tuple[str, ...] = tuple(str(path) for path in paths)
 
         self.snapshots: dict[str, set[str]] = {}
 

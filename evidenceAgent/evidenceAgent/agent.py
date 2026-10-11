@@ -22,27 +22,21 @@ class EvidenceAgent:
     ):
         self.config = config
 
-        self.state = AgentState(
-            config.state_directory
-        )
+        self.state = AgentState(config.state_directory)
 
-        self.spool = EvidenceSpool(
-            f"{config.state_directory}/spool"
-        )
+        self.spool = EvidenceSpool(f"{config.state_directory}/spool")
 
         self.client = CentralEvidenceClient(
             base_url=config.central_url,
             api_key=config.api_key,
         )
 
-        self.authentication = (
-            AuthenticationCollector(
-                tenant_id=config.tenant_id,
-                instance_name=config.instance_name,
-                agent_id=config.agent_id,
-                path=config.auth_log,
-                state=self.state,
-            )
+        self.authentication = AuthenticationCollector(
+            tenant_id=config.tenant_id,
+            instance_name=config.instance_name,
+            agent_id=config.agent_id,
+            path=config.auth_log,
+            state=self.state,
         )
 
         self.access = AccessCollector(
@@ -102,24 +96,15 @@ class EvidenceAgent:
         Central is temporarily unavailable.
         """
 
-        path = self.spool.store(
-            event
-        )
+        path = self.spool.store(event)
 
         try:
 
-            self.client.submit(
-                event
-            )
+            self.client.submit(event)
 
-            self.spool.remove(
-                path
-            )
+            self.spool.remove(path)
 
-            print(
-                f"[agent] submitted evidence: "
-                f"{event.event_id}"
-            )
+            print(f"[agent] submitted evidence: " f"{event.event_id}")
 
         except Exception as exc:
 
@@ -144,44 +129,29 @@ class EvidenceAgent:
         if not pending:
             return
 
-        print(
-            f"[agent] retrying {len(pending)} "
-            f"spooled evidence event(s)"
-        )
+        print(f"[agent] retrying {len(pending)} " f"spooled evidence event(s)")
 
         for path in pending:
 
             try:
 
-                event = self.spool.load(
-                    path
-                )
+                event = self.spool.load(path)
 
                 if not isinstance(event, EvidenceEvent):
                     raise TypeError(
-                    f"Expected EvidenceEvent in instance spool, "
-                    f"got {type(event).__name__}"
+                        f"Expected EvidenceEvent in instance spool, "
+                        f"got {type(event).__name__}"
                     )
 
-                self.client.submit(
-                    event
-                )
+                self.client.submit(event)
 
-                self.spool.remove(
-                    path
-                )
+                self.spool.remove(path)
 
-                print(
-                    f"[agent] drained spool: "
-                    f"{event.event_id}"
-                )
+                print(f"[agent] drained spool: " f"{event.event_id}")
 
             except Exception as exc:
 
-                print(
-                    f"[agent] spool retry failed: "
-                    f"{path.name}: {exc}"
-                )
+                print(f"[agent] spool retry failed: " f"{path.name}: {exc}")
 
     def run(self):
 
@@ -195,6 +165,4 @@ class EvidenceAgent:
 
             self.collect_once()
 
-            time.sleep(
-                self.config.interval
-            )
+            time.sleep(self.config.interval)

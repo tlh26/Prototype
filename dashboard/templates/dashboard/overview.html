@@ -1,0 +1,472 @@
+<!-- dashboard/templates/dashboard/overview.html -->
+{% extends "dashboard/base.html" %}
+
+{% block title %}
+Overview · Evidence Correlation Platform
+{% endblock %}
+
+{% block topbar_title %}
+Overview
+{% endblock %}
+
+{% block content %}
+
+<div class="page-header">
+
+    <div class="page-header-main">
+
+        <div class="breadcrumbs">
+
+            <span class="breadcrumb-current">
+                Overview
+            </span>
+
+        </div>
+
+        <h1 class="page-title">
+            Evidence Correlation Overview
+        </h1>
+
+        <p class="page-description">
+            Central view of tenants, evidence, entities, relationships,
+            and correlation findings.
+        </p>
+
+    </div>
+
+</div>
+
+{% include "dashboard/partials/central_status.html" %}
+
+
+<!-- {# ============================================================
+KPI cards
+============================================================ #} -->
+
+<div class="metric-grid">
+
+    <div class="card overview-stat-card">
+
+        <p class="overview-stat-label">
+            Tenants
+        </p>
+
+        <p class="overview-stat-value">
+
+            {% if overview %}
+            {{ overview.tenant_count }}
+            {% else %}
+            —
+            {% endif %}
+
+        </p>
+
+        <p class="overview-stat-note">
+            Logical tenant boundaries
+        </p>
+
+    </div>
+
+
+    <div class="card overview-stat-card">
+
+        <p class="overview-stat-label">
+            Evidence processed
+        </p>
+
+        <p class="overview-stat-value">
+
+            {% if overview %}
+            {{ overview.evidence_count }}
+            {% else %}
+            —
+            {% endif %}
+
+        </p>
+
+        <p class="overview-stat-note">
+            Current dashboard processing window
+        </p>
+
+    </div>
+
+
+    <div class="card overview-stat-card">
+
+        <p class="overview-stat-label">
+            Findings
+        </p>
+
+        <p class="overview-stat-value">
+
+            {% if overview %}
+            {{ overview.finding_count }}
+            {% else %}
+            —
+            {% endif %}
+
+        </p>
+
+        <p class="overview-stat-note">
+            Correlation results
+        </p>
+
+    </div>
+
+
+    <div class="card overview-stat-card">
+
+        <p class="overview-stat-label">
+            Entities
+        </p>
+
+        <p class="overview-stat-value">
+
+            {% if overview %}
+            {{ overview.entity_count }}
+            {% else %}
+            —
+            {% endif %}
+
+        </p>
+
+        <p class="overview-stat-note">
+            Extracted from processed evidence
+        </p>
+
+    </div>
+
+</div>
+
+
+<!-- {# ============================================================
+Tenant activity
+============================================================ #} -->
+
+<div class="card mb-20">
+
+    <div class="card-header">
+
+        <div>
+
+            <h2 class="card-title">
+                Tenant activity
+            </h2>
+
+            <p class="card-subtitle">
+                Evidence available by logical tenant boundary.
+            </p>
+
+        </div>
+
+        <a href="{% url 'dashboard:tenants' %}" class="btn btn-secondary">
+            View tenants
+        </a>
+
+    </div>
+
+
+    <div class="tenant-list">
+
+        {% if overview %}
+
+        {% for tenant in overview.tenants %}
+
+        <div class="tenant-row">
+
+            <div>
+
+                <a href="{% url 'dashboard:evidence' %}?tenant_id={{ tenant.tenant_id }}" class="tenant-name">
+                    {{ tenant.tenant_id }}
+                </a>
+
+                <div class="tenant-meta">
+
+                    {{ tenant.instances|length }}
+                    instance{{ tenant.instances|length|pluralize }}
+
+                </div>
+
+            </div>
+
+
+            <div class="tenant-stat">
+
+                <span class="tenant-stat-value">
+                    {{ tenant.evidence_count }}
+                </span>
+
+                <span class="tenant-stat-label">
+                    Evidence
+                </span>
+
+            </div>
+
+
+            <div class="tenant-stat">
+
+                <span class="tenant-stat-value">
+                    {{ tenant.event_count }}
+                </span>
+
+                <span class="tenant-stat-label">
+                    Events
+                </span>
+
+            </div>
+
+
+            <div class="tenant-stat">
+
+                <span class="tenant-stat-value">
+                    {{ tenant.record_count }}
+                </span>
+
+                <span class="tenant-stat-label">
+                    Records
+                </span>
+
+            </div>
+
+
+            <div>
+
+                <a href="{% url 'dashboard:correlations' %}?tenant_id={{ tenant.tenant_id }}" class="btn btn-secondary">
+                    Investigate
+                </a>
+
+            </div>
+
+        </div>
+
+        {% empty %}
+
+        <div class="empty-state">
+
+            <h3 class="empty-state-title">
+                No tenants found
+            </h3>
+
+            <p class="empty-state-text">
+                No tenant boundaries are currently represented
+                in the central evidence store.
+            </p>
+
+        </div>
+
+        {% endfor %}
+
+        {% else %}
+
+        <div class="empty-state">
+
+            <h3 class="empty-state-title">
+                Tenant activity unavailable
+            </h3>
+
+            <p class="empty-state-text">
+                Tenant activity cannot currently be retrieved because
+                the central evidence store is unavailable.
+            </p>
+
+        </div>
+
+        {% endif %}
+
+    </div>
+
+</div>
+
+
+<!-- {# ============================================================
+Quick investigation actions
+============================================================ #} -->
+
+<div class="content-grid">
+
+    <div class="col-span-6">
+
+        <div class="card">
+
+            <div class="card-header">
+
+                <div>
+
+                    <h2 class="card-title">
+                        Investigate evidence
+                    </h2>
+
+                    <p class="card-subtitle">
+                        Inspect individual evidence items and provenance.
+                    </p>
+
+                </div>
+
+            </div>
+
+            <div class="card-body">
+
+                <a href="{% url 'dashboard:evidence' %}" class="btn btn-primary">
+                    Browse evidence
+                </a>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <div class="col-span-6">
+
+        <div class="card">
+
+            <div class="card-header">
+
+                <div>
+
+                    <h2 class="card-title">
+                        Investigate relationships
+                    </h2>
+
+                    <p class="card-subtitle">
+                        Examine findings generated by the correlation engine.
+                    </p>
+
+                </div>
+
+            </div>
+
+            <div class="card-body">
+
+                <a href="{% url 'dashboard:correlations' %}" class="btn btn-primary">
+                    View correlations
+                </a>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+<!-- Correlation execution summary -->
+<div class="metric-grid correlation-metrics">
+    <div class="card overview-stat-card">
+        <p class="overview-stat-label">Candidates evaluated</p>
+        <p class="overview-stat-value">
+            {% if overview %}
+            {{ overview.evaluated_candidate_count }}
+            {% else %}
+            —
+            {% endif %}
+        </p>
+        <p class="overview-stat-note">
+            Candidates passed to evaluation
+        </p>
+    </div>
+
+    <div class="card overview-stat-card">
+        <p class="overview-stat-label">Policy denials</p>
+        <p class="overview-stat-value">
+            {% if overview %}
+            {{ overview.policy_denied_count }}
+            {% else %}
+            —
+            {% endif %}
+        </p>
+        <p class="overview-stat-note">
+            Candidates denied by correlation policy
+        </p>
+    </div>
+
+    <div class="card overview-stat-card">
+        <p class="overview-stat-label">Causal relationships</p>
+        <p class="overview-stat-value">
+            {% if overview %}
+            {{ overview.causal_relationship_count }}
+            {% else %}
+            —
+            {% endif %}
+        </p>
+        <p class="overview-stat-note">
+            Supported causal links in returned findings
+        </p>
+    </div>
+
+    <div class="card overview-stat-card">
+        <p class="overview-stat-label">Analysis duration</p>
+        <p class="overview-stat-value">
+            {% if overview %}
+            {{ overview.duration_seconds|floatformat:3 }} s
+            {% else %}
+            —
+            {% endif %}
+        </p>
+        <p class="overview-stat-note">
+            Duration of the latest overview analysis
+        </p>
+    </div>
+</div>
+
+<!-- Correlation graph preview -->
+<div class="card mb-20">
+    <div class="card-header">
+        <div>
+            <h2 class="card-title">Evidence relationships</h2>
+            <p class="card-subtitle">
+                A partial view of evidence supporting findings
+                and causal relationships returned by the engine.
+            </p>
+        </div>
+        <a href="{% url 'dashboard:correlations' %}" class="btn btn-secondary">
+            Explore correlations
+        </a>
+    </div>
+
+    {% if overview and overview.correlation_presentation %}
+    {% with graph=overview.correlation_presentation.graph %}
+    <div class="graph-summary">
+        <div>
+            <span class="graph-summary-value">
+                {{ graph.evidence_node_count }}
+            </span>
+            <span class="graph-summary-label">Evidence nodes</span>
+        </div>
+        <div>
+            <span class="graph-summary-value">
+                {{ graph.finding_node_count }}
+            </span>
+            <span class="graph-summary-label">Finding nodes</span>
+        </div>
+        <div>
+            <span class="graph-summary-value">
+                {{ graph.edge_count }}
+            </span>
+            <span class="graph-summary-label">Displayed links</span>
+        </div>
+        <div>
+            <span class="graph-summary-value">
+                {{ graph.causal_edge_count }}
+            </span>
+            <span class="graph-summary-label">Causal links</span>
+        </div>
+    </div>
+
+    {% if graph.edges %}
+    {% include "dashboard/partials/correlation_graph.html" %}
+    {% else %}
+    <div class="empty-state">
+        <p class="empty-state-text">
+            No supported graph links are available
+            for this analysis.
+        </p>
+    </div>
+    {% endif %}
+    {% endwith %}
+    {% endif %}
+</div>
+
+
+{% endblock %}

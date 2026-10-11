@@ -1,4 +1,6 @@
 import base64
+
+
 def test_submit_evidence_event(
     client,
     evidence_payload,
@@ -17,6 +19,7 @@ def test_submit_evidence_event(
     assert body["status"] == "stored"
     assert body["event_id"] == "event-001"
     assert body["sha256"] == evidence_payload["sha256"]
+
 
 def test_get_submitted_event(
     client,
@@ -65,13 +68,9 @@ def test_raw_evidence_is_preserved(
 
     body = response.json()
 
-    stored_raw = base64.b64decode(
-        body["raw_data"]
-    )
+    stored_raw = base64.b64decode(body["raw_data"])
 
-    expected_raw = base64.b64decode(
-        evidence_payload["raw_data"]
-    )
+    expected_raw = base64.b64decode(evidence_payload["raw_data"])
 
     assert stored_raw == expected_raw
 
@@ -93,10 +92,7 @@ def test_invalid_sha256_is_rejected(
 
     assert response.status_code == 400
 
-    assert (
-        "integrity"
-        in response.json()["detail"].lower()
-    )
+    assert "integrity" in response.json()["detail"].lower()
 
 
 def test_tampered_raw_data_is_rejected(
@@ -106,9 +102,7 @@ def test_tampered_raw_data_is_rejected(
 ):
     payload = dict(evidence_payload)
 
-    payload["raw_data"] = base64.b64encode(
-        b"TAMPERED EVIDENCE"
-    ).decode("ascii")
+    payload["raw_data"] = base64.b64encode(b"TAMPERED EVIDENCE").decode("ascii")
 
     response = client.post(
         "/api/v1/evidence/events",
@@ -117,6 +111,7 @@ def test_tampered_raw_data_is_rejected(
     )
 
     assert response.status_code == 400
+
 
 def test_duplicate_event_is_not_stored_twice(
     client,
@@ -138,9 +133,7 @@ def test_duplicate_event_is_not_stored_twice(
     assert first.status_code == 200
     assert second.status_code == 200
 
-    assert second.json()["status"] == (
-        "already_exists"
-    )
+    assert second.json()["status"] == ("already_exists")
 
     response = client.get(
         "/api/v1/evidence/events",
@@ -173,6 +166,7 @@ def test_list_evidence(
     assert body["count"] == 1
     assert len(body["events"]) == 1
     assert body["events"][0]["event_id"] == "event-001"
+
 
 def test_list_filters_by_tenant(
     client,
@@ -211,10 +205,8 @@ def test_list_filters_by_tenant(
     body = response.json()
 
     assert body["count"] == 1
-    assert (
-        body["events"][0]["tenant_id"]
-        == "tenant-b"
-    )
+    assert body["events"][0]["tenant_id"] == "tenant-b"
+
 
 def test_list_filters_by_instance(
     client,
@@ -252,10 +244,7 @@ def test_list_filters_by_instance(
     body = response.json()
 
     assert body["count"] == 1
-    assert (
-        body["events"][0]["instance_name"]
-        == "web-b"
-    )
+    assert body["events"][0]["instance_name"] == "web-b"
 
 
 def test_get_missing_event_returns_404(

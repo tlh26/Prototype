@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import hashlib
 import json
-import sqlite3
+
+from psycopg import Connection
 
 from evidence.evidence import EvidenceRecord
 
@@ -11,26 +12,27 @@ class GenericEvidenceRepository:
     """
     Repository for canonical raw forensic evidence.
 
-    This repository is intentionally separate from the existing
-    EvidenceRepository, which manages normalized EvidenceEvent
-    records.
+    This repository stores evidence_records in PostgreSQL.
+
+    It remains separate from EvidenceRepository, which manages
+    normalized evidence_events.
     """
 
     def __init__(
         self,
-        connection: sqlite3.Connection,
+        connection: Connection,
     ) -> None:
         self.connection = connection
 
     def get(
         self,
         evidence_id: str,
-    ) -> sqlite3.Row | None:
+    ):
         cursor = self.connection.execute(
             """
             SELECT *
             FROM evidence_records
-            WHERE evidence_id = ?
+            WHERE evidence_id = %s
             """,
             (evidence_id,),
         )
@@ -42,29 +44,17 @@ class GenericEvidenceRepository:
         evidence: EvidenceRecord,
     ) -> None:
 
-        actual_sha256 = hashlib.sha256(
-            evidence.raw_data
-        ).hexdigest()
+        actual_sha256 = hashlib.sha256(evidence.raw_data).hexdigest()
 
         if actual_sha256 != evidence.sha256:
-            raise ValueError(
-                f"SHA-256 mismatch for "
-                f"{evidence.evidence_id}"
-            )
+            raise ValueError(f"SHA-256 mismatch for " f"{evidence.evidence_id}")
 
-        actual_size = len(
-            evidence.raw_data
-        )
+        actual_size = len(evidence.raw_data)
 
         if actual_size != evidence.size_bytes:
-            raise ValueError(
-                f"Evidence size mismatch for "
-                f"{evidence.evidence_id}"
-            )
+            raise ValueError(f"Evidence size mismatch for " f"{evidence.evidence_id}")
 
-        existing = self.get(
-            evidence.evidence_id
-        )
+        existing = self.get(evidence.evidence_id)
 
         if existing is not None:
 
@@ -90,20 +80,12 @@ class GenericEvidenceRepository:
                     "source_path": evidence.source_path,
                     "acquisition_layer": evidence.acquisition_layer,
                     "acquired_from": evidence.acquired_from,
-                    "attribution_method": (
-                        evidence.attribution_method
-                    ),
-                    "collected_at": (
-                        evidence.collected_at.isoformat()
-                    ),
+                    "attribution_method": (evidence.attribution_method),
+                    "collected_at": (evidence.collected_at.isoformat()),
                     "sha256": evidence.sha256,
                     "size_bytes": evidence.size_bytes,
-                    "sequence_start": (
-                        evidence.sequence_start
-                    ),
-                    "sequence_end": (
-                        evidence.sequence_end
-                    ),
+                    "sequence_start": (evidence.sequence_start),
+                    "sequence_end": (evidence.sequence_end),
                     "capture_id": evidence.capture_id,
                 },
                 sort_keys=True,
@@ -134,8 +116,10 @@ class GenericEvidenceRepository:
                 record_sha256
             )
             VALUES (
-                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
-                ?, ?, ?, ?, ?, ?, ?, ?, ?
+                %s, %s, %s, %s, %s,
+                %s, %s, %s, %s, %s,
+                %s, %s, %s, %s, %s,
+                %s, %s, %s, %s
             )
             """,
             (
@@ -168,7 +152,7 @@ class GenericEvidenceRepository:
         *,
         tenant_id: str | None = None,
         instance_name: str | None = None,
-    ) -> list[sqlite3.Row]:
+    ):
 
         query = """
             SELECT *
@@ -180,13 +164,13 @@ class GenericEvidenceRepository:
 
         if tenant_id is not None:
             query += """
-                AND tenant_id = ?
+                AND tenant_id = %s
             """
             parameters.append(tenant_id)
 
         if instance_name is not None:
             query += """
-                AND instance_name = ?
+                AND instance_name = %s
             """
             parameters.append(instance_name)
 

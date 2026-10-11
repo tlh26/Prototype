@@ -1,0 +1,142 @@
+{% extends "dashboard/base.html" %}
+
+{% block title %}
+Tenants · Evidence Correlation Platform
+{% endblock %}
+
+{% block topbar_title %}
+Tenants
+{% endblock %}
+
+{% block content %}
+
+<div class="section-header">
+    <div class="section-header-main">
+        <div class="breadcrumbs">
+            <span class="breadcrumb-current">
+                Tenants
+            </span>
+        </div>
+        <h1 class="section-title">
+            Tenants
+        </h1>
+        <p class="section-description">
+            Logical tenant boundaries discovered from the central evidence store.
+        </p>
+    </div>
+</div>
+{% include "dashboard/partials/central_status.html" %}
+
+<div class="card">
+    <div class="card-body">
+        {% if central_available is False and not tenants %}
+        <div class="empty-state">
+            <h3 class="empty-state-title">
+                Tenant information unavailable
+            </h3>
+            <p class="empty-state-text">
+                The central evidence store cannot currently be reached,
+                and no previous tenant state is available.
+            </p>
+        </div>
+        {% elif tenants %}
+        <div class="tenant-list">
+            {% for tenant in tenants %}
+            <article class="tenant-row">
+                <div class="tenant-main">
+                    <div class="tenant-name">
+                        {{ tenant.tenant_id }}
+                    </div>
+                    <div class="tenant-meta">
+                        {% if tenant.instances %}
+                        {{ tenant.instances|length }}
+                        instance{{ tenant.instances|length|pluralize }}
+                        {% else %}
+                        No instances recorded
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="tenant-stat">
+                    <span class="tenant-stat-label">
+                        Evidence
+                    </span>
+                    <strong>
+                        {{ tenant.evidence_count }}
+                    </strong>
+                </div>
+
+                <div class="tenant-stat">
+                    <span class="tenant-stat-label">
+                        Events
+                    </span>
+                    <strong>
+                        {{ tenant.event_count }}
+                    </strong>
+                </div>
+
+
+                <div class="tenant-stat">
+                    <span class="tenant-stat-label">
+                        Records
+                    </span>
+                    <strong>
+                        {{ tenant.record_count }}
+                    </strong>
+                </div>
+
+
+                <div class="tenant-instances">
+                    <span class="tenant-stat-label">
+                        Instances
+                    </span>
+                    {% if tenant.instances %}
+                    <div class="tenant-instance-list">
+                        {% for instance in tenant.instances %}
+                        <a
+                            href="{% url 'dashboard:evidence' %}?tenant_id={{ tenant.tenant_id }}&instance_name={{ instance }}">
+                            {{ instance }}
+                        </a>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <span class="tenant-empty">
+                        —
+                    </span>
+                    {% endif %}
+                </div>
+
+                <div class="tenant-actions">
+                    <a href="{% url 'dashboard:evidence' %}?tenant_id={{ tenant.tenant_id }}"
+                        class="btn btn-secondary btn-sm">
+                        Evidence
+                    </a>
+                    <a href="{% url 'dashboard:correlations' %}?tenant_id={{ tenant.tenant_id }}"
+                        class="btn btn-secondary btn-sm">
+                        Correlations
+                    </a>
+                    <a href="{% url 'dashboard:timeline' %}?tenant_id={{ tenant.tenant_id }}"
+                        class="btn btn-secondary btn-sm">
+                        Timeline
+                    </a>
+                </div>
+            </article>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <h3 class="empty-state-title">
+                No tenants found
+            </h3>
+            <p class="empty-state-text">
+                No tenant identifiers were found in the central evidence store.
+            </p>
+        </div>
+
+        {% endif %}
+
+    </div>
+
+</div>
+
+{% endblock %}
