@@ -8,6 +8,8 @@ from copy import copy
 from datetime import datetime, timezone
 from time import perf_counter
 from typing import Any, Iterable
+from time import perf_counter
+
 
 from correlation.attributes import AttributeExtractor
 from correlation.candidates import CandidateGenerator

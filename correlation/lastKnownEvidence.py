@@ -77,6 +77,24 @@ class LastKnownEvidenceStore:
                     cached_at TEXT NOT NULL
                 );
 
+                CREATE INDEX IF NOT EXISTS idx_cached_events_timestamp
+                ON events(json_extract(payload, '$.timestamp'), event_id);
+
+                CREATE INDEX IF NOT EXISTS idx_cached_events_tenant_timestamp
+                ON events(
+                    json_extract(payload, '$.tenant_id'),
+                    json_extract(payload, '$.timestamp'),
+                    event_id
+                );
+
+                CREATE INDEX IF NOT EXISTS idx_cached_events_tenant_instance_timestamp
+                ON events(
+                    json_extract(payload, '$.tenant_id'),
+                    json_extract(payload, '$.instance_name'),
+                    json_extract(payload, '$.timestamp'),
+                    event_id
+                );
+
                 CREATE TABLE IF NOT EXISTS records (
                     evidence_id TEXT PRIMARY KEY,
                     payload TEXT NOT NULL,
@@ -190,6 +208,51 @@ class LastKnownEvidenceStore:
                 cached_at,
             )
 
+    # def get_events(
+    #     self,
+    #     *,
+    #     tenant_id: str | None = None,
+    #     instance_name: str | None = None,
+    #     limit: int = 100,
+    # ) -> tuple[dict[str, Any], ...]:
+    #     if limit <= 0:
+    #         return ()
+
+    #     with self._connect() as connection:
+    #         rows = connection.execute(
+    #             """
+    #             SELECT payload
+    #             FROM events
+    #             ORDER BY json_extract(payload, '$.timestamp') ASC,
+    #                      event_id ASC
+    #             """
+    #         ).fetchall()
+
+    #     results: list[dict[str, Any]] = []
+
+    #     for row in rows:
+    #         payload = json.loads(row["payload"])
+
+    #         if (
+    #             tenant_id is not None
+    #             and payload.get("tenant_id") != tenant_id
+    #         ):
+    #             continue
+
+    #         if (
+    #             instance_name is not None
+    #             and payload.get("instance_name") != instance_name
+    #         ):
+    #             continue
+
+    #         results.append(payload)
+
+    #         if len(results) >= limit:
+    #             break
+
+    #     return tuple(results)
+
+
     def get_events(
         self,
         *,
@@ -197,42 +260,44 @@ class LastKnownEvidenceStore:
         instance_name: str | None = None,
         limit: int = 100,
     ) -> tuple[dict[str, Any], ...]:
+        """Fetch only the matching cached events, ordered deterministically."""
+
         if limit <= 0:
             return ()
 
+        query = """
+            SELECT payload
+            FROM events
+            WHERE 1 = 1
+        """
+        parameters: list[Any] = []
+
+        if tenant_id is not None:
+            query += " AND json_extract(payload, '$.tenant_id') = ?"
+            parameters.append(tenant_id)
+
+        if instance_name is not None:
+            query += " AND json_extract(payload, '$.instance_name') = ?"
+            parameters.append(instance_name)
+
+        query += """
+            ORDER BY json_extract(payload, '$.timestamp') DESC,
+                     event_id DESC
+            LIMIT ?
+        """
+        parameters.append(limit)
+
         with self._connect() as connection:
             rows = connection.execute(
-                """
-                SELECT payload
-                FROM events
-                ORDER BY json_extract(payload, '$.timestamp') ASC,
-                         event_id ASC
-                """
+                query,
+                parameters,
             ).fetchall()
 
-        results: list[dict[str, Any]] = []
+        return tuple(
+            json.loads(row["payload"])
+            for row in reversed(rows)
+        )
 
-        for row in rows:
-            payload = json.loads(row["payload"])
-
-            if (
-                tenant_id is not None
-                and payload.get("tenant_id") != tenant_id
-            ):
-                continue
-
-            if (
-                instance_name is not None
-                and payload.get("instance_name") != instance_name
-            ):
-                continue
-
-            results.append(payload)
-
-            if len(results) >= limit:
-                break
-
-        return tuple(results)
 
     def get_event(
         self,
@@ -299,6 +364,50 @@ class LastKnownEvidenceStore:
                 cached_at,
             )
 
+    # def get_records(
+    #     self,
+    #     *,
+    #     tenant_id: str | None = None,
+    #     instance_name: str | None = None,
+    #     limit: int = 100,
+    # ) -> tuple[dict[str, Any], ...]:
+    #     if limit <= 0:
+    #         return ()
+
+    #     with self._connect() as connection:
+    #         rows = connection.execute(
+    #             """
+    #             SELECT payload
+    #             FROM records
+    #             ORDER BY json_extract(payload, '$.collected_at') ASC,
+    #                      evidence_id ASC
+    #             """
+    #         ).fetchall()
+
+    #     results: list[dict[str, Any]] = []
+
+    #     for row in rows:
+    #         payload = json.loads(row["payload"])
+
+    #         if (
+    #             tenant_id is not None
+    #             and payload.get("tenant_id") != tenant_id
+    #         ):
+    #             continue
+
+    #         if (
+    #             instance_name is not None
+    #             and payload.get("instance_name") != instance_name
+    #         ):
+    #             continue
+
+    #         results.append(payload)
+
+    #         if len(results) >= limit:
+    #             break
+
+    #     return tuple(results)
+
     def get_records(
         self,
         *,
@@ -309,39 +418,35 @@ class LastKnownEvidenceStore:
         if limit <= 0:
             return ()
 
+        query = """
+            SELECT payload
+            FROM records
+            WHERE 1 = 1
+        """
+        parameters: list[Any] = []
+
+        if tenant_id is not None:
+            query += " AND json_extract(payload, '$.tenant_id') = ?"
+            parameters.append(tenant_id)
+
+        if instance_name is not None:
+            query += " AND json_extract(payload, '$.instance_name') = ?"
+            parameters.append(instance_name)
+
+        query += """
+            ORDER BY json_extract(payload, '$.collected_at') DESC,
+                        evidence_id DESC
+            LIMIT ?
+        """
+        parameters.append(limit)
+
         with self._connect() as connection:
-            rows = connection.execute(
-                """
-                SELECT payload
-                FROM records
-                ORDER BY json_extract(payload, '$.collected_at') ASC,
-                         evidence_id ASC
-                """
-            ).fetchall()
+            rows = connection.execute(query, parameters).fetchall()
 
-        results: list[dict[str, Any]] = []
-
-        for row in rows:
-            payload = json.loads(row["payload"])
-
-            if (
-                tenant_id is not None
-                and payload.get("tenant_id") != tenant_id
-            ):
-                continue
-
-            if (
-                instance_name is not None
-                and payload.get("instance_name") != instance_name
-            ):
-                continue
-
-            results.append(payload)
-
-            if len(results) >= limit:
-                break
-
-        return tuple(results)
+        return tuple(
+            json.loads(row["payload"])
+            for row in reversed(rows)
+        )
 
     def get_record(
         self,

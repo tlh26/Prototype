@@ -17,23 +17,26 @@ from dashboard.services.factory import (
 )
 from correlation.centralEvidence import PostgreSQLCorrelationSource
 from correlation.engine import CorrelationEngine
+from evidenceAgent.evidenceAgent.models import EventType
 
 from dashboard.services.correlation import CorrelationService
 from dashboard.services.correlationPresentation import (
     CorrelationPresentationAdapter,
 )
+from django.core.paginator import Paginator
+from django.shortcuts import render
 
 
 def _begin_source_read():
     """
-    Reset the request-level Central/cache status.
+    Reset request-level Central/cache status.
 
     All dashboard services ultimately use the same cached
-    PostgreSQLCorrelationSource instance.
+    PostgreSQLCorrelationSource instance. The first actual data read checks
+    Central availability and uses the last-known cache if needed.
     """
     source = build_correlation_source()
     source.begin_read()
-    source.check_central()
     return source
 
 
@@ -95,6 +98,10 @@ def evidence(request):
 
     tenant_id = request.GET.get("tenant_id") or None
     instance_name = request.GET.get("instance_name") or None
+    timestamp_from = request.GET.get("timestamp_from", "")
+    timestamp_to = request.GET.get("timestamp_to", "")
+    event_type = request.GET.get("event_type", "")
+    event_source = request.GET.get("event_source", "")
 
     try:
         evidence_items = build_evidence_service().list_evidence(
@@ -108,6 +115,14 @@ def evidence(request):
         "evidence_items": evidence_items,
         "tenant_id": tenant_id,
         "instance_name": instance_name,
+        "timestamp_from": timestamp_from,
+        "timestamp_to": timestamp_to,
+        "event_type": event_type,
+        "event_source": event_source,
+        "event_types": tuple(
+            (item.value, item.value.replace("_", " ").title())
+            for item in EventType
+        ),
         **_source_context(source),
     }
 
@@ -155,7 +170,6 @@ def timeline(request):
         entries = build_timeline_service().build(
             tenant_id=tenant_id,
             instance_name=instance_name,
-            limit=100,
         )
     except CentralEvidenceUnavailable:
         entries = ()
@@ -181,35 +195,63 @@ def correlations(request):
     tenant_id = request.GET.get("tenant_id") or None
     instance_name = request.GET.get("instance_name") or None
 
+    # Bound the requested page size to prevent enormous responses.
+    try:
+        page_size = int(request.GET.get("page_size", 25))
+    except (TypeError, ValueError):
+        page_size = 25
+
+    page_size = max(1, min(page_size, 50))
+
     result = None
     presentation = None
+    findings_page = Paginator((), page_size).get_page(1)
 
     try:
         service = build_correlation_service()
 
+        # Run the authoritative engine once for this request.
         result = service.correlate(
             tenant_id=tenant_id,
             instance_name=instance_name,
-            limit=100,
         )
 
-        presentation = service.presentation_adapter.adapt(result)
+        # Paginate before building the dashboard presentation.
+        paginator = Paginator(result.findings, page_size)
+        findings_page = paginator.get_page(request.GET.get("page", 1))
+
+        # Adapt only the visible findings and a bounded graph preview.
+        presentation = service.presentation_adapter.adapt(
+            result,
+            findings=findings_page.object_list,
+            graph_finding_limit=12,
+            graph_edge_limit=40,
+        )
 
     except CentralEvidenceUnavailable:
         result = None
         presentation = None
-
-    context = {
-        "result": result,
-        "presentation": presentation,
-        "findings": result.findings if result is not None else (),
-        "tenant_id": tenant_id,
-        "instance_name": instance_name,
-        **_source_context(source),
-    }
+        findings_page = Paginator((), page_size).get_page(1)
 
     return render(
         request,
         "dashboard/correlations.html",
-        context,
+        {
+            # Keep the result for summary fields, but never loop over
+            # result.findings in the template.
+            "result": result,
+            "presentation": presentation,
+            "findings": (
+                findings_page.object_list
+                if presentation is None
+                else presentation["findings"]
+            ),
+            "findings_page": findings_page,
+            "page_obj": findings_page,
+            "paginator": findings_page.paginator,
+            "page_size": page_size,
+            "tenant_id": tenant_id,
+            "instance_name": instance_name,
+            **_source_context(source),
+        },
     )

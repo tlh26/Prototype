@@ -43,6 +43,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "django.middleware.gzip.GZipMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -132,11 +133,11 @@ import os
 
 
 DASHBOARD_CORRELATION_LIMIT = int(
-    os.getenv("DASHBOARD_CORRELATION_LIMIT", "100")
+    os.getenv("DASHBOARD_CORRELATION_LIMIT", "200")
 )
 
 DASHBOARD_EVIDENCE_LIMIT = int(
-    os.getenv("DASHBOARD_EVIDENCE_LIMIT", "100")
+    os.getenv("DASHBOARD_EVIDENCE_LIMIT", "350")
 )
 
 DASHBOARD_RULE_WINDOW_SECONDS = int(
