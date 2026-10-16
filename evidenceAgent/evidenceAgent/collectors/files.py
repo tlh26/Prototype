@@ -1,5 +1,8 @@
+# evidenceAgent/evidenceAgent/collectors/files.py
+
 from __future__ import annotations
 
+import hashlib
 import uuid
 from pathlib import Path
 from typing import Iterable
@@ -11,14 +14,21 @@ from ..models import (
 )
 
 
+# A file fingerprint consists of:
+# (file size, modification time in nanoseconds, SHA-256 content hash)
+FileFingerprint = tuple[int, int, str]
+
+
 class FileCollector:
     """
-    Collects filesystem create/delete events from one or more directories.
+    Collect filesystem create, modify, and delete events.
 
-    The collector maintains an in-memory snapshot for each configured path.
-    Each call to collect() compares the current filesystem state with the
-    previous snapshot and emits EvidenceEvent objects for newly created or
-    deleted files.
+    Each configured root has an in-memory snapshot mapping file paths
+    to fingerprints. A fingerprint includes file size, modification
+    time, and SHA-256 content hash.
+
+    Changes are detected by comparing the current snapshot with the
+    previous snapshot.
     """
 
     def __init__(
@@ -35,95 +45,193 @@ class FileCollector:
         self.agent_id = agent_id
         self.state = state
 
-        # Normalize all configured paths to strings.
-        #
-        # agent.py currently passes:
-        #     [config.watched_directory]
-        #
-        # so this also works when watched_directory is a Path object.
-        self.paths: tuple[str, ...] = tuple(str(path) for path in paths)
+        # Normalize configured paths to strings.
+        self.paths: tuple[str, ...] = tuple(
+            str(path) for path in paths
+        )
 
-        self.snapshots: dict[str, set[str]] = {}
+        # Each snapshot maps a file path to its fingerprint.
+        self.snapshots: dict[
+            str, dict[str, FileFingerprint]
+        ] = {}
 
         self._initialize()
 
     def _initialize(self) -> None:
         """
-        Create the initial filesystem snapshot for each configured path.
-        """
+        Establish the initial snapshot for each configured root.
 
+        Existing files are treated as the baseline. They do not
+        generate creation events during initialization.
+        """
         for root in self.paths:
             self.snapshots[root] = self._snapshot(root)
+
+    @staticmethod
+    def _fingerprint(
+        path: Path,
+    ) -> FileFingerprint | None:
+        """
+        Calculate a fingerprint for a file.
+
+        Returns None if the file cannot be read or inspected.
+
+        The metadata is checked before and after hashing to reduce
+        the chance of accepting a fingerprint for a file that was
+        changing while it was being read.
+        """
+        try:
+            before = path.stat()
+
+            if not path.is_file():
+                return None
+
+            digest = hashlib.sha256()
+
+            with path.open("rb") as file:
+                for chunk in iter(
+                    lambda: file.read(1024 * 1024),
+                    b"",
+                ):
+                    digest.update(chunk)
+
+            after = path.stat()
+
+            # Retry on a later collection cycle if metadata changed
+            # while the file was being read.
+            if (
+                before.st_size != after.st_size
+                or before.st_mtime_ns != after.st_mtime_ns
+            ):
+                return None
+
+            return (
+                after.st_size,
+                after.st_mtime_ns,
+                digest.hexdigest(),
+            )
+
+        except (OSError, PermissionError):
+            # Do not let one inaccessible file stop collection.
+            return None
 
     def _snapshot(
         self,
         root: str,
-    ) -> set[str]:
+    ) -> dict[str, FileFingerprint]:
         """
-        Return a set containing all files currently present below root.
+        Return fingerprints for files below a configured root.
 
-        Missing directories are treated as empty directories.
-
-        Permission errors are ignored so that one inaccessible path does
-        not stop the entire evidence collection cycle.
+        Missing or inaccessible roots produce an empty snapshot.
+        Files that cannot be fingerprinted are omitted.
         """
-
         path = Path(root)
 
-        if not path.exists():
-            return set()
+        if not path.exists() or not path.is_dir():
+            return {}
 
-        result: set[str] = set()
+        result: dict[str, FileFingerprint] = {}
 
         try:
             for item in path.rglob("*"):
-                if item.is_file():
-                    result.add(str(item))
+                try:
+                    if not item.is_file():
+                        continue
 
-        except PermissionError:
+                    fingerprint = self._fingerprint(item)
+
+                    if fingerprint is not None:
+                        result[str(item)] = fingerprint
+
+                except OSError:
+                    # Skip an individual problematic entry.
+                    continue
+
+        except OSError:
+            # Directory traversal may fail because of permissions
+            # or filesystem errors.
             pass
 
         return result
 
     def collect(self) -> list[EvidenceEvent]:
         """
-        Detect filesystem changes since the previous collection cycle.
+        Detect filesystem changes since the previous collection.
 
         Returns:
-            A list of EvidenceEvent objects representing file creations
-            and deletions.
+            Evidence events representing file creation,
+            modification, and deletion.
         """
-
         events: list[EvidenceEvent] = []
 
         for root in self.paths:
-            previous = self.snapshots.get(
-                root,
-                set(),
-            )
-
+            previous = self.snapshots.get(root, {})
             current = self._snapshot(root)
 
-            created = current - previous
-            deleted = previous - current
+            previous_paths = set(previous)
+            current_paths = set(current)
 
+            created = current_paths - previous_paths
+            deleted = previous_paths - current_paths
+            common = previous_paths & current_paths
+
+            # Detect newly created files.
             for path in sorted(created):
+                fingerprint = current[path]
+
                 events.append(
                     self._event(
                         event_type=EventType.FILE_CREATE,
                         path=path,
+                        details={
+                            "path": path,
+                            "size": fingerprint[0],
+                            "mtime_ns": fingerprint[1],
+                            "sha256": fingerprint[2],
+                        },
                     )
                 )
 
+            # Detect modified files.
+            for path in sorted(common):
+                old_fingerprint = previous[path]
+                new_fingerprint = current[path]
+
+                if old_fingerprint != new_fingerprint:
+                    events.append(
+                        self._event(
+                            event_type=EventType.FILE_MODIFY,
+                            path=path,
+                            details={
+                                "path": path,
+                                "previous_size": old_fingerprint[0],
+                                "current_size": new_fingerprint[0],
+                                "previous_mtime_ns": old_fingerprint[1],
+                                "current_mtime_ns": new_fingerprint[1],
+                                "previous_sha256": old_fingerprint[2],
+                                "current_sha256": new_fingerprint[2],
+                            },
+                        )
+                    )
+
+            # Detect deleted files.
             for path in sorted(deleted):
+                fingerprint = previous[path]
+
                 events.append(
                     self._event(
                         event_type=EventType.FILE_DELETE,
                         path=path,
+                        details={
+                            "path": path,
+                            "previous_size": fingerprint[0],
+                            "previous_mtime_ns": fingerprint[1],
+                            "previous_sha256": fingerprint[2],
+                        },
                     )
                 )
 
-            # Update the snapshot after processing the differences.
+            # Save the current snapshot for the next cycle.
             self.snapshots[root] = current
 
         return events
@@ -133,11 +241,11 @@ class FileCollector:
         *,
         event_type: EventType,
         path: str,
+        details: dict | None = None,
     ) -> EvidenceEvent:
         """
         Create an EvidenceEvent for a filesystem change.
         """
-
         raw = path.encode("utf-8")
 
         sequence = self.state.get_sequence() + 1
@@ -153,9 +261,7 @@ class FileCollector:
             source="filesystem",
             source_path=path,
             resource=path,
-            details={
-                "path": path,
-            },
+            details=details or {"path": path},
             raw_data=raw,
         )
 
