@@ -78,7 +78,7 @@ def build_correlation_service() -> CorrelationService:
 
     evidence_limit = _setting(
         "DASHBOARD_EVIDENCE_LIMIT",
-        100,
+        250,
     )
 
     return CorrelationService(
@@ -92,7 +92,7 @@ def build_correlation_service() -> CorrelationService:
 def build_evidence_service() -> EvidenceService:
     return EvidenceService(
         source=build_correlation_source(),
-        evidence_limit=_setting("DASHBOARD_EVIDENCE_LIMIT", 100),
+        evidence_limit=_setting("DASHBOARD_EVIDENCE_LIMIT", 250),
     )
 
 @lru_cache(maxsize=1)
@@ -106,7 +106,7 @@ def build_timeline_service() -> TimelineService:
 def build_tenant_service() -> TenantService:
     return TenantService(
         source=build_correlation_source(),
-        evidence_limit=_setting("DASHBOARD_EVIDENCE_LIMIT", 100),
+        evidence_limit=_setting("DASHBOARD_EVIDENCE_LIMIT", 250),
     )
 
 @lru_cache(maxsize=1)
@@ -114,5 +114,5 @@ def build_overview_service() -> OverviewService:
     return OverviewService(
         tenant_service=build_tenant_service(),
         correlation_service=build_correlation_service(),
-        evidence_limit=_setting("DASHBOARD_EVIDENCE_LIMIT", 100),
+        evidence_limit=_setting("DASHBOARD_EVIDENCE_LIMIT", 250),
     )
