@@ -40,6 +40,8 @@ class CandidateGenerator:
         entities_by_evidence: (
             dict[str, tuple[EvidenceEntity, ...]] | None
         ) = None,
+        *,
+        include_provenance: bool = True,
     ) -> tuple[CorrelationCandidate, ...]:
         """
         Generate candidates using indexed, multidimensional blocking.
@@ -77,6 +79,7 @@ class CandidateGenerator:
                 second,
                 entities_by_evidence,
                 blocking_keys=pair.blocking_keys,
+                include_provenance=include_provenance,
             )
 
             if candidate is not None:
@@ -96,6 +99,7 @@ class CandidateGenerator:
             str, tuple[EvidenceEntity, ...]
         ],
         blocking_keys: tuple[str, ...],
+        include_provenance: bool,
     ) -> CorrelationCandidate | None:
         evidence_ids = tuple(
             sorted(
@@ -201,23 +205,25 @@ class CandidateGenerator:
 
         # Use one resolver for both reference types. An empty or
         # whitespace-only source_table must never be passed through.
-        evidence_references = (
-            EvidenceReference(
-                evidence_id=first.evidence_id,
-                source_table=self._source_table(first),
-                sha256=first.sha256,
-            ),
-            EvidenceReference(
-                evidence_id=second.evidence_id,
-                source_table=self._source_table(second),
-                sha256=second.sha256,
-            ),
-        )
-
-        provenance = (
-            self._provenance_reference(first),
-            self._provenance_reference(second),
-        )
+        evidence_references = ()
+        provenance = ()
+        if include_provenance:
+            evidence_references = (
+                EvidenceReference(
+                    evidence_id=first.evidence_id,
+                    source_table=self._source_table(first),
+                    sha256=first.sha256,
+                ),
+                EvidenceReference(
+                    evidence_id=second.evidence_id,
+                    source_table=self._source_table(second),
+                    sha256=second.sha256,
+                ),
+            )
+            provenance = (
+                self._provenance_reference(first),
+                self._provenance_reference(second),
+            )
 
         return CorrelationCandidate(
             candidate_id=(

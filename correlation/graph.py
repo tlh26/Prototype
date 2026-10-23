@@ -7,7 +7,6 @@ from typing import Mapping, Sequence
 
 from correlation.models import (
     CanonicalEvidence,
-    CausalLink,
     CausalRelation,
     CorrelationFinding,
     EvidenceEntity,
@@ -39,7 +38,13 @@ class EvidenceGraphBuilder:
         entities_by_evidence: Mapping[str, Sequence[EvidenceEntity]],
         relationships: Sequence[EvidenceRelationship],
         findings: Sequence[CorrelationFinding],
+        permitted_features: Sequence[str] | None = None,
     ) -> EvidenceGraph:
+        permitted = (
+            set(permitted_features)
+            if permitted_features is not None
+            else {"temporal", "entity", "resource", "action", "provenance"}
+        )
         nodes: dict[str, EvidenceGraphNode] = {}
         edges: dict[str, EvidenceGraphEdge] = {}
 
@@ -82,29 +87,45 @@ class EvidenceGraphBuilder:
             evidence = evidence_by_id[evidence_id]
             event_node_id = f"event:{evidence_id}"
 
+            event_attributes: dict[str, object] = {}
+            if "provenance" in permitted:
+                event_attributes.update(
+                    evidence_type=evidence.evidence_type,
+                    layer=evidence.layer.value,
+                )
+            if "action" in permitted:
+                event_attributes["event_type"] = evidence.event_type
+            if "provenance" in permitted:
+                event_attributes.update(
+                    source=evidence.source,
+                    source_path=evidence.source_path,
+                    sha256=evidence.sha256,
+                    agent_id=evidence.agent_id,
+                    sequence_start=evidence.sequence_start,
+                    sequence_end=evidence.sequence_end,
+                )
+            if "temporal" in permitted:
+                event_attributes.update(
+                    event_timestamp=(
+                        evidence.event_timestamp.isoformat()
+                        if evidence.event_timestamp
+                        else None
+                    ),
+                    collected_at=evidence.collected_at.isoformat(),
+                )
+
             add_node(
                 EvidenceGraphNode(
                     node_id=event_node_id,
                     node_type=GraphNodeType.EVENT,
-                    label=evidence.event_type,
+                    label=(
+                        evidence.event_type
+                        if "action" in permitted
+                        else "event"
+                    ),
                     tenant_id=evidence.tenant_id,
                     evidence_ids=(evidence_id,),
-                    attributes={
-                        "evidence_type": evidence.evidence_type,
-                        "layer": evidence.layer.value,
-                        "source": evidence.source,
-                        "source_path": evidence.source_path,
-                        "event_timestamp": (
-                            evidence.event_timestamp.isoformat()
-                            if evidence.event_timestamp
-                            else None
-                        ),
-                        "collected_at": evidence.collected_at.isoformat(),
-                        "sha256": evidence.sha256,
-                        "agent_id": evidence.agent_id,
-                        "sequence_start": evidence.sequence_start,
-                        "sequence_end": evidence.sequence_end,
-                    },
+                    attributes=event_attributes,
                 )
             )
 

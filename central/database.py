@@ -19,6 +19,7 @@ def get_connection(
     return Connection.connect(
         config.database_url,
         row_factory=dict_row,
+        connect_timeout=3,
     )
 
 

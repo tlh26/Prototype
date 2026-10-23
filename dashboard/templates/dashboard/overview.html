@@ -85,7 +85,7 @@ KPI cards
         </p>
 
         <p class="overview-stat-note">
-            Current dashboard processing window
+            Most recent evidence in the dashboard processing window
         </p>
 
     </div>
@@ -455,14 +455,14 @@ Quick investigation actions
     </div>
 
     {% if graph.edges %}
-    {% include "dashboard/partials/correlation_graph.html" %}
+        {% include "dashboard/partials/correlationGraph.html" %}
     {% else %}
-    <div class="empty-state">
-        <p class="empty-state-text">
-            No supported graph links are available
-            for this analysis.
-        </p>
-    </div>
+        <div class="empty-state">
+            <p class="empty-state-text">
+                No supported graph links are available
+                for this analysis.
+            </p>
+        </div>
     {% endif %}
     {% endwith %}
     {% endif %}

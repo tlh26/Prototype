@@ -63,26 +63,56 @@ class CrossTenantPolicy:
                 ),
             )
 
-        if context.allowed_tenant_pairs:
-            candidate_pair = frozenset(
-                candidate.tenant_ids
+        # if context.allowed_tenant_pairs:
+        #     candidate_pair = frozenset(
+        #         candidate.tenant_ids
+        #     )
+
+        #     permitted_pairs = {
+        #         frozenset(pair)
+        #         for pair in context.allowed_tenant_pairs
+        #     }
+
+        #     if candidate_pair not in permitted_pairs:
+        #         return PolicyDecision(
+        #             allowed=False,
+        #             policy_id=self.policy_id,
+        #             reason=(
+        #                 "The tenant pair is not present in "
+        #                 "the configured cross-tenant "
+        #                 "allowlist."
+        #             ),
+        #         )
+
+
+        if not context.allowed_tenant_pairs:
+            return PolicyDecision(
+                allowed=False,
+                policy_id=self.policy_id,
+                reason=(
+                    "Cross-tenant correlation requires an "
+                    "explicitly authorised tenant pair."
+                ),
             )
 
-            permitted_pairs = {
-                frozenset(pair)
-                for pair in context.allowed_tenant_pairs
-            }
+        candidate_pair = frozenset(candidate.tenant_ids)
 
-            if candidate_pair not in permitted_pairs:
-                return PolicyDecision(
-                    allowed=False,
-                    policy_id=self.policy_id,
-                    reason=(
-                        "The tenant pair is not present in "
-                        "the configured cross-tenant "
-                        "allowlist."
-                    ),
-                )
+        permitted_pairs = {
+            frozenset(pair)
+            for pair in context.allowed_tenant_pairs
+            if len(pair) == 2 and pair[0] != pair[1]
+        }
+
+        if candidate_pair not in permitted_pairs:
+            return PolicyDecision(
+                allowed=False,
+                policy_id=self.policy_id,
+                reason=(
+                    "The tenant pair is not present in "
+                    "the configured cross-tenant allowlist."
+                ),
+            )
+
 
         return PolicyDecision(
             allowed=True,

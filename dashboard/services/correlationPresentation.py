@@ -1,7 +1,6 @@
 
 # dashboard/services/correlationPresentation.py
 
-
 from __future__ import annotations
 
 from collections import Counter
@@ -28,19 +27,48 @@ class CorrelationPresentationAdapter:
       - Infer causal links independently of CausalReasoner.
     """
 
-    def adapt(self, result: CorrelationResult) -> dict[str, Any]:
-        findings = tuple(
-            self._finding(finding)
-            for finding in result.findings
+    def adapt(
+        self,
+        result: CorrelationResult,
+        *,
+        findings: Iterable[CorrelationFinding] | None = None,
+        graph_finding_limit: int | None = 12,
+        graph_edge_limit: int = 40,
+    ) -> dict[str, Any]:
+        """
+        Adapt an authoritative correlation result for dashboard display.
+
+        The complete result remains authoritative for aggregate metrics.
+        The optional findings argument limits which findings are displayed.
+        Graph limits affect presentation only, not correlation or policy.
+        """
+        selected_findings = tuple(
+            result.findings if findings is None else findings
         )
 
-        graph = self._graph(result)
+        displayed_findings = tuple(
+            self._finding(finding)
+            for finding in selected_findings
+        )
 
+        if graph_finding_limit is not None:
+            graph_finding_limit = max(0, graph_finding_limit)
+            graph_findings = selected_findings[:graph_finding_limit]
+        else:
+            graph_findings = selected_findings
+
+        graph = self._graph(
+            result,
+            findings=graph_findings,
+            max_edges=graph_edge_limit,
+        )
+
+        # Deduplicate causal relationships by their authoritative IDs.
         causal_by_id = {
             link.relationship_id: link
-            for finding in result.findings
+            for finding in selected_findings
             for link in finding.causal_relationships
-            }
+        }
 
         causal_links = tuple(causal_by_id.values())
 
@@ -49,6 +77,8 @@ class CorrelationPresentationAdapter:
             for link in causal_links
         )
 
+        # IMPORTANT: adapt() must return a dictionary. Without this return,
+        # Python returns None and dashboard services cannot access metrics.
         return {
             "analysis": {
                 "analysis_id": result.analysis_id,
@@ -60,6 +90,8 @@ class CorrelationPresentationAdapter:
                 "privacy_mode": self._value(result.privacy_mode),
             },
             "metrics": {
+                # Aggregate counts describe the complete engine result,
+                # not just the subset of findings displayed on this page.
                 "evidence_count": result.evidence_count,
                 "candidate_count": result.candidate_count,
                 "evaluated_candidate_count": (
@@ -70,10 +102,12 @@ class CorrelationPresentationAdapter:
                     result.rejected_candidate_count
                 ),
                 "policy_denied_count": result.policy_denied_count,
-                # "entity_count": len(result.entities),
-                # "relationship_count": len(result.relationships),
-                "entity_count": self._metadata_count(result, "entity_count"),
-                "relationship_count": self._metadata_count(result, "relationship_count"),
+                "entity_count": self._metadata_count(
+                    result, "entity_count"
+                ),
+                "relationship_count": self._metadata_count(
+                    result, "relationship_count"
+                ),
                 "causal_relationship_count": len(causal_links),
                 "causal_relation_counts": dict(relation_counts),
                 "duration_seconds": result.duration_seconds,
@@ -85,7 +119,7 @@ class CorrelationPresentationAdapter:
                 ),
                 "provenance_complete": result.provenance_complete,
             },
-            "findings": findings,
+            "findings": displayed_findings,
             "graph": graph,
             "causal_relationships": tuple(
                 self._causal_link(link)
@@ -94,7 +128,11 @@ class CorrelationPresentationAdapter:
             "warnings": tuple(result.warnings),
         }
 
-    def _finding(self, finding: CorrelationFinding) -> dict[str, Any]:
+    def _finding(
+        self,
+        finding: CorrelationFinding,
+    ) -> dict[str, Any]:
+        """Convert a finding into a dashboard-friendly representation."""
         score = finding.score
 
         features = tuple(
@@ -153,22 +191,33 @@ class CorrelationPresentationAdapter:
             "configuration_version": finding.configuration_version,
         }
 
-    def _graph(self, result: CorrelationResult) -> dict[str, Any]:
+    def _graph(
+        self,
+        result: CorrelationResult,
+        *,
+        findings: Iterable[CorrelationFinding] | None = None,
+        max_edges: int = 40,
+    ) -> dict[str, Any]:
         """
-        Build a partial graph using only relationships explicitly
-        supported by the correlation result.
+        Build a partial graph using relationships supported by the result.
 
-        Nodes are canonical evidence and findings.
-        Edges represent correlation findings and returned causal links.
+        Nodes represent evidence and findings. Edges represent evidence
+        supporting a finding and causal links returned by the engine.
 
-        Entity and general relationship nodes can be added later once
-        the complete graph-builder schema is wired into the result.
+        This is a presentation graph, not a replacement for the
+        authoritative correlation or causal reasoning process.
         """
+        selected_findings = tuple(
+            result.findings if findings is None else findings
+        )
+
+        max_edges = max(0, max_edges)
         nodes: dict[str, dict[str, Any]] = {}
         edges: list[dict[str, Any]] = []
         edge_ids: set[str] = set()
 
-        for finding in result.findings:
+        # Create evidence nodes before edges are constructed.
+        for finding in selected_findings:
             for evidence_id in finding.evidence_ids:
                 node_id = f"evidence:{evidence_id}"
 
@@ -183,9 +232,9 @@ class CorrelationPresentationAdapter:
                         "layer": None,
                         "timestamp": None,
                     },
-            )
+                )
 
-        for finding in result.findings:
+        for finding in selected_findings:
             finding_node_id = f"finding:{finding.finding_id}"
 
             nodes[finding_node_id] = {
@@ -197,34 +246,41 @@ class CorrelationPresentationAdapter:
                 "status": self._value(finding.status),
             }
 
+            # Connect evidence nodes to their finding.
             for evidence_id in finding.evidence_ids:
                 evidence_node_id = f"evidence:{evidence_id}"
 
-                # Avoid dangling links if an evidence item was not included
-                # in this result's returned evidence collection.
                 if evidence_node_id not in nodes:
                     continue
 
-                edge_id = f"supports:{evidence_id}:{finding.finding_id}"
+                edge_id = (
+                    f"supports:{evidence_id}:{finding.finding_id}"
+                )
 
                 if edge_id in edge_ids:
                     continue
 
                 edge_ids.add(edge_id)
-                edges.append({
-                    "id": edge_id,
-                    "source": evidence_node_id,
-                    "target": finding_node_id,
-                    "source_label": nodes[evidence_node_id]["label"],
-                    "target_label": nodes[finding_node_id]["label"],
-                    "kind": "supports",
-                    "label": "supports finding",
-                })
 
+                if len(edges) >= max_edges:
+                    continue
+
+                edges.append(
+                    {
+                        "id": edge_id,
+                        "source": evidence_node_id,
+                        "target": finding_node_id,
+                        "source_label": nodes[evidence_node_id]["label"],
+                        "target_label": nodes[finding_node_id]["label"],
+                        "kind": "supports",
+                        "label": "supports finding",
+                    }
+                )
+
+            # Add only causal links supplied by the correlation engine.
             for link in finding.causal_relationships:
                 source = f"evidence:{link.source_evidence_id}"
                 target = f"evidence:{link.target_evidence_id}"
-                
 
                 if source not in nodes or target not in nodes:
                     continue
@@ -235,17 +291,23 @@ class CorrelationPresentationAdapter:
                     continue
 
                 edge_ids.add(edge_id)
-                edges.append({
-                    "id": edge_id,
-                    "source": source,
-                    "target": target,
-                    "source_label": nodes[source]["label"],
-                    "target_label": nodes[target]["label"],
-                    "kind": "causal",
-                    "label": self._value(link.relation).upper(),
-                    "confidence": link.confidence,
-                    "explanation": link.explanation,
-                })
+
+                if len(edges) >= max_edges:
+                    continue
+
+                edges.append(
+                    {
+                        "id": edge_id,
+                        "source": source,
+                        "target": target,
+                        "source_label": nodes[source]["label"],
+                        "target_label": nodes[target]["label"],
+                        "kind": "causal",
+                        "label": self._value(link.relation).upper(),
+                        "confidence": link.confidence,
+                        "explanation": link.explanation,
+                    }
+                )
 
         return {
             "nodes": tuple(nodes.values()),
@@ -268,6 +330,7 @@ class CorrelationPresentationAdapter:
 
     @staticmethod
     def _causal_link(link: Any) -> dict[str, Any]:
+        """Convert an engine-provided causal relationship for display."""
         return {
             "relationship_id": link.relationship_id,
             "relation": CorrelationPresentationAdapter._value(
@@ -292,7 +355,10 @@ class CorrelationPresentationAdapter:
         return str(getattr(value, "value", value))
 
     @staticmethod
-    def _metadata_count(result, key: str) -> int:
+    def _metadata_count(
+        result: CorrelationResult,
+        key: str,
+    ) -> int:
         """Read aggregate counts without assuming result collections exist."""
         metadata = getattr(result, "metadata", None)
 

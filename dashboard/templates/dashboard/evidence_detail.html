@@ -301,7 +301,12 @@ Evidence Detail
             Event details
         </h3>
         <div class="raw-evidence">
-            {% if evidence.details %}
+            {% if not show_raw_evidence %}
+            <p>
+                Event details are hidden because the active privacy mode is
+                {{ privacy_mode }}.
+            </p>
+            {% elif evidence.details %}
             <pre>{{ evidence.details }}</pre>
             {% elif evidence.details_json %}
             <pre>{{ evidence.details_json }}</pre>
@@ -624,6 +629,7 @@ Evidence Detail
         {# Raw evidence #}
         {# ---------------------------------------------------- #} -->
 
+        {% if show_raw_evidence %}
         <h3 class="detail-section-title">
             Raw evidence
         </h3>
@@ -643,6 +649,15 @@ Evidence Detail
             {% endif %}
 
         </div>
+        {% else %}
+        <h3 class="detail-section-title">
+            Raw evidence hidden
+        </h3>
+        <p>
+            Raw evidence is hidden because the active privacy mode is
+            {{ privacy_mode }}.
+        </p>
+        {% endif %}
 
     </div>
    

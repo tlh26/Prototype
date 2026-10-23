@@ -10,8 +10,8 @@ charset-normalizer==3.5.0
 click==8.4.2
 coverage==7.15.2
 Django==6.1.1
--e git+https://github.com/tlh26/Prototype.git@0fc83204e2b8f44105d64814a536affd3f69601f#egg=evidence_agent&subdirectory=evidenceAgent
--e git+https://github.com/tlh26/Prototype.git@0fc83204e2b8f44105d64814a536affd3f69601f#egg=evidenceAgent&subdirectory=evidenceAgent
+-e git+https://github.com/tlh26/Prototype.git@5a4c197ef7b313a4770332153858aa0f30edbf3d#egg=evidence_agent&subdirectory=evidenceAgent
+-e git+https://github.com/tlh26/Prototype.git@5a4c197ef7b313a4770332153858aa0f30edbf3d#egg=evidenceAgent&subdirectory=evidenceAgent
 fastapi==0.141.1
 h11==0.16.0
 httpcore2==2.12.0

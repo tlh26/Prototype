@@ -8,6 +8,8 @@ from copy import copy
 from datetime import datetime, timezone
 from time import perf_counter
 from typing import Any, Iterable
+from time import perf_counter
+
 
 from correlation.attributes import AttributeExtractor
 from correlation.candidates import CandidateGenerator
@@ -28,6 +30,7 @@ from correlation.models import (
 )
 from correlation.normaliser import EvidenceNormaliser
 from correlation.policy import CrossTenantPolicy
+from correlation.privacy import PrivacyControls
 from correlation.relationships import RelationshipMapper
 from correlation.rules import SameTenantTemporalRule
 from correlation.scoring import CorrelationScorer
@@ -55,6 +58,7 @@ class CorrelationEngine:
         policy: CrossTenantPolicy | None = None,
         causal_reasoner: CausalReasoner | None = None,
         graph_builder: EvidenceGraphBuilder | None = None,
+        pseudonymisation_key: str | bytes | None = None,
     ) -> None:
         self.normaliser = normaliser or EvidenceNormaliser()
         self.attribute_extractor = attribute_extractor or AttributeExtractor()
@@ -73,6 +77,7 @@ class CorrelationEngine:
         self.policy = policy or CrossTenantPolicy()
         self.causal_reasoner = causal_reasoner or CausalReasoner()
         self.graph_builder = graph_builder or EvidenceGraphBuilder()
+        self.privacy_controls = PrivacyControls(pseudonymisation_key)
 
     # ==================================================================
     # Main pipeline
@@ -95,15 +100,25 @@ class CorrelationEngine:
         raw_items = tuple(evidence_items)
         canonical_items = tuple(self.normalise(item) for item in raw_items)
 
-        evidence_by_id: dict[str, CanonicalEvidence] = {}
+        authorisation_evidence_by_id: dict[str, CanonicalEvidence] = {}
         for item in canonical_items:
-            if item.evidence_id in evidence_by_id:
+            if item.evidence_id in authorisation_evidence_by_id:
                 raise ValueError(
                     "Duplicate evidence_id after normalisation: "
                     f"{item.evidence_id!r}. Evidence IDs must be unique "
                     "within one analysis."
                 )
-            evidence_by_id[item.evidence_id] = item
+            authorisation_evidence_by_id[item.evidence_id] = item
+
+        result_context = self.privacy_controls.prepare_context(context)
+        permitted_features = result_context.permitted_feature_types
+        canonical_items = tuple(
+            self.privacy_controls.project_evidence(item, result_context)
+            for item in canonical_items
+        )
+        evidence_by_id = {
+            item.evidence_id: item for item in canonical_items
+        }
 
         # 2. Extract attributes, entities, and entity relationships.
         entities_by_evidence: dict[str, tuple[EvidenceEntity, ...]] = {}
@@ -113,12 +128,17 @@ class CorrelationEngine:
             extracted_attributes = self.attribute_extractor.extract(evidence)
             enriched = self._apply_attributes(evidence, extracted_attributes)
 
-            entities = tuple(self.entity_mapper.extract(enriched))
+            entities = (
+                tuple(self.entity_mapper.extract(enriched))
+                if "entity" in permitted_features
+                else ()
+            )
             entities_by_evidence[enriched.evidence_id] = entities
 
-            relationships.extend(
-                self.relationship_mapper.map(enriched, entities)
-            )
+            if "entity" in permitted_features:
+                relationships.extend(
+                    self.relationship_mapper.map(enriched, entities)
+                )
 
             evidence_by_id[enriched.evidence_id] = enriched
 
@@ -135,8 +155,16 @@ class CorrelationEngine:
             generator.generate(
                 evidence_by_id.values(),
                 entities_by_evidence,
+                include_provenance=(
+                    "provenance" in permitted_features
+                ),
             )
         )
+        if "action" not in permitted_features:
+            candidates = tuple(
+                candidate.model_copy(update={"related_actions": ()})
+                for candidate in candidates
+            )
 
         naive_comparison_count = (
             len(canonical_items) * max(len(canonical_items) - 1, 0) // 2
@@ -159,15 +187,32 @@ class CorrelationEngine:
 
         # 5. Scope, policy, score, causal reasoning, and finding construction.
         for candidate in candidates:
+            authorization_tenants = tuple(
+                sorted(
+                    {
+                        authorisation_evidence_by_id[evidence_id].tenant_id
+                        for evidence_id in candidate.evidence_ids
+                        if authorisation_evidence_by_id[evidence_id].tenant_id
+                        is not None
+                    }
+                )
+            )
+            authorization_candidate = candidate.model_copy(
+                update={
+                    "tenant_ids": authorization_tenants,
+                    "cross_tenant": len(authorization_tenants) > 1,
+                }
+            )
+
             if not self._candidate_in_scope(
-                candidate,
+                authorization_candidate,
                 context,
-                evidence_by_id=evidence_by_id,
+                evidence_by_id=authorisation_evidence_by_id,
             ):
                 policy_denied_count += 1
                 continue
 
-            decision = self.policy.evaluate(candidate, context)
+            decision = self.policy.evaluate(authorization_candidate, context)
             if not decision.allowed:
                 policy_denied_count += 1
                 continue
@@ -177,31 +222,38 @@ class CorrelationEngine:
             score = scorer.score(
                 candidate,
                 evidence_by_id,
-                permitted_features=context.permitted_feature_types,
+                permitted_features=permitted_features,
             )
 
             if not score.passed:
                 rejected_candidate_count += 1
                 continue
 
-            causal_candidate_count += 1
-            causal_result = self.causal_reasoner.reason(
-                candidate=candidate,
-                evidence_by_id=evidence_by_id,
-                context=context,
-            )
-            causal_evaluated_count += int(causal_result.considered)
+            causal_relationships: tuple[CausalLink, ...] = ()
+            causal_explanation = ""
+            causal_metadata: dict[str, Any] = {}
+            if {"action", "temporal"}.issubset(permitted_features):
+                causal_candidate_count += 1
+                causal_result = self.causal_reasoner.reason(
+                    candidate=candidate,
+                    evidence_by_id=evidence_by_id,
+                    context=result_context,
+                )
+                causal_evaluated_count += int(causal_result.considered)
+                causal_relationships = causal_result.relationships
+                causal_explanation = causal_result.explanation
+                causal_metadata = causal_result.metadata
 
             finding = self._build_finding(
                 candidate=candidate,
                 score=score,
-                context=context,
+                context=result_context,
                 relationships=relationships,
                 policy_id=decision.policy_id,
                 policy_reason=decision.reason,
-                causal_relationships=causal_result.relationships,
-                causal_explanation=causal_result.explanation,
-                causal_metadata=causal_result.metadata,
+                causal_relationships=causal_relationships,
+                causal_explanation=causal_explanation,
+                causal_metadata=causal_metadata,
             )
             findings.append(finding)
 
@@ -210,11 +262,12 @@ class CorrelationEngine:
 
         # 7. Build graph only from final, policy-approved findings.
         evidence_graph = self.graph_builder.build(
-            analysis_id=context.analysis_id,
+            analysis_id=result_context.analysis_id,
             evidence_by_id=evidence_by_id,
             entities_by_evidence=entities_by_evidence,
             relationships=relationships,
             findings=final_findings,
+            permitted_features=permitted_features,
         )
 
         causal_finding_count = sum(
@@ -264,7 +317,7 @@ class CorrelationEngine:
             analysis_id=context.analysis_id,
             started_at=started_at,
             completed_at=completed_at,
-            context=context,
+            context=result_context,
             findings=final_findings,
             evidence_graph=evidence_graph,
 
@@ -287,11 +340,11 @@ class CorrelationEngine:
             provenance_reference_count=provenance_reference_count,
             provenance_complete=provenance_complete,
 
-            privacy_mode=context.privacy_mode,
-            features_available=tuple(context.permitted_feature_types),
+            privacy_mode=result_context.privacy_mode,
+            features_available=tuple(permitted_features),
 
             engine_version=self.engine_version,
-            configuration_version=context.configuration_version,
+            configuration_version=result_context.configuration_version,
             warnings=tuple(warnings),
 
             metadata={

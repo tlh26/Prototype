@@ -1,5 +1,5 @@
 {% extends "dashboard/base.html" %}
-{% load dashboard_formatting %}
+{% load dashboard_formatting static %}
 
 {% block title %}
 Evidence · Evidence Correlation Platform
@@ -50,6 +50,43 @@ Evidence
 
         </div>
 
+        <div class="form-group filter-field">
+            <label for="timestamp_from" class="form-label">
+                From timestamp (UTC)
+            </label>
+            <input id="timestamp_from" name="timestamp_from" type="datetime-local" class="form-control"
+                value="{{ timestamp_from }}">
+        </div>
+
+        <div class="form-group filter-field">
+            <label for="timestamp_to" class="form-label">
+                To timestamp (UTC)
+            </label>
+            <input id="timestamp_to" name="timestamp_to" type="datetime-local" class="form-control"
+                value="{{ timestamp_to }}">
+        </div>
+
+        <div class="form-group filter-field">
+            <label for="event_type" class="form-label">
+                Event type
+            </label>
+            <select id="event_type" name="event_type" class="form-control">
+                <option value="">All event types</option>
+                {% for value, label in event_types %}
+                <option value="{{ value }}" {% if event_type == value %}selected{% endif %}>
+                    {{ label }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="form-group filter-field">
+            <label for="event_source" class="form-label">
+                Event source
+            </label>
+            <input id="event_source" name="event_source" type="search" class="form-control"
+                value="{{ event_source }}" placeholder="Any source">
+        </div>
 
         <div class="filter-actions">
 
@@ -69,7 +106,7 @@ Evidence
         <div class="overview-stat-label">
             Evidence returned
         </div>
-        <div class="overview-stat-value">
+        <div class="overview-stat-value" id="evidence-visible-count">
             {% if central_available is False and not evidence_items %}
             —
             {% else %}
@@ -80,7 +117,7 @@ Evidence
             {% if central_available is False and not evidence_items %}
             Evidence count unavailable
             {% else %}
-            Items in the current result set
+            Matching loaded evidence items
             {% endif %}
         </div>
     </div>
@@ -91,7 +128,7 @@ Evidence
             Scope
         </div>
         <div class="overview-stat-value">
-            {% if tenant_id or instance_name %}
+            {% if tenant_id or instance_name or timestamp_from or timestamp_to or event_type or event_source %}
             Filtered
             {% else %}
             All
@@ -104,6 +141,8 @@ Evidence
             Tenant: {{ tenant_id }}
             {% elif instance_name %}
             Instance: {{ instance_name }}
+            {% elif timestamp_from or timestamp_to or event_type or event_source %}
+            Additional evidence filters applied
             {% else %}
             No tenant or instance filter
             {% endif %}
@@ -112,7 +151,7 @@ Evidence
 </div>
 
 
-{% if tenant_id or instance_name %}
+{% if tenant_id or instance_name or timestamp_from or timestamp_to or event_type or event_source %}
 
 <div class="card">
 
@@ -151,6 +190,22 @@ Evidence
 
             {% endif %}
 
+            {% if timestamp_from %}
+            <span class="badge">From: {{ timestamp_from }}</span>
+            {% endif %}
+
+            {% if timestamp_to %}
+            <span class="badge">To: {{ timestamp_to }}</span>
+            {% endif %}
+
+            {% if event_type %}
+            <span class="badge">Event type: {{ event_type }}</span>
+            {% endif %}
+
+            {% if event_source %}
+            <span class="badge">Source contains: {{ event_source }}</span>
+            {% endif %}
+
         </div>
 
     </div>
@@ -177,7 +232,7 @@ Evidence
         </div>
         {% if evidence_items %}
         <div class="table-responsive">
-            <table class="evidence-table">
+            <table class="evidence-table" id="evidence-table">
                 <thead>
                     <tr>
                         <th scope="col">
@@ -208,7 +263,10 @@ Evidence
                 </thead>
                 <tbody>
                     {% for item in evidence_items %}
-                    <tr>
+                    <tr
+                        data-timestamp="{% if item.event_id %}{{ item.timestamp|date:'c' }}{% else %}{{ item.collected_at|date:'c' }}{% endif %}"
+                        data-event-type="{% if item.event_id %}{{ item.event_type.value|default:item.event_type }}{% endif %}"
+                        data-source="{{ item.source|default:'' }}">
 
                         <td class="evidence-timestamp">
 
@@ -290,6 +348,11 @@ Evidence
                 </tbody>
             </table>
         </div>
+        <p id="evidence-filter-status" class="overview-stat-note" aria-live="polite"></p>
+        <div id="evidence-no-matches" class="empty-state" hidden>
+            <h3>No matching evidence</h3>
+            <p>No loaded evidence items match the selected timestamp, type, and source filters.</p>
+        </div>
         <!-- {# ------------------------------------------------------------ #}
         {# No evidence / Central unavailable #}
         {# ------------------------------------------------------------ #} -->
@@ -316,7 +379,7 @@ Evidence
                 and no previous evidence state is available.
             </p>
             {% endif %}
-            {% if tenant_id or instance_name %}
+            {% if tenant_id or instance_name or timestamp_from or timestamp_to or event_type or event_source %}
             <a href="{% url 'dashboard:evidence' %}" class="btn btn-secondary">
                 Clear filters
             </a>
@@ -336,7 +399,7 @@ Evidence
                 No evidence items were returned for the selected
                 tenant and instance filters.
             </p>
-            {% if tenant_id or instance_name %}
+            {% if tenant_id or instance_name or timestamp_from or timestamp_to or event_type or event_source %}
             <a href="{% url 'dashboard:evidence' %}" class="btn btn-secondary">
                 Clear filters
             </a>
@@ -345,4 +408,8 @@ Evidence
         {% endif %}
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'dashboard/js/evidence-filters.js' %}" defer></script>
 {% endblock %}
