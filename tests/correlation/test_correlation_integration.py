@@ -133,6 +133,9 @@ def make_engine(
         candidate_generator=candidate_generator,
         scorer=scorer,
         policy=policy,
+        pseudonymisation_key=(
+            "test-correlation-privacy-key-for-integration-tests"
+        ),
     )
 
 

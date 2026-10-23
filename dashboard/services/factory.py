@@ -62,6 +62,7 @@ def build_correlation_engine() -> CorrelationEngine:
         attribute_extractor=AttributeExtractor(),
         entity_mapper=EntityExtractor(),
         relationship_mapper=RelationshipMapper(),
+        pseudonymisation_key=_setting("SECRET_KEY", None),
         rules=[
             SameTenantTemporalRule(
                 window_seconds=window_seconds,

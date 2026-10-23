@@ -9,6 +9,7 @@ from correlation.engine import CorrelationEngine
 from dashboard.services.correlationPresentation import (
     CorrelationPresentationAdapter,
 )
+from correlation.models import CorrelationContext
 from time import perf_counter
 
 
@@ -100,11 +101,9 @@ class CorrelationService:
         tenant_id: str | None = None,
         instance_name: str | None = None,
         limit: int | None = None,
+        context: CorrelationContext | None = None,
     ):
-        """
-        Fetch authoritative evidence and pass it to the
-        authoritative CorrelationEngine.
-        """
+        """Fetch evidence and execute the authoritative correlation engine."""
         started = perf_counter()
 
         evidence = self._fetch_evidence(
@@ -114,7 +113,7 @@ class CorrelationService:
         )
         fetched_at = perf_counter()
 
-        result = self.engine.process(evidence)
+        result = self.engine.process(evidence, context=context)
 
         completed_at = perf_counter()
 
@@ -129,6 +128,44 @@ class CorrelationService:
         )
 
         return result
+
+    # def correlate(
+    #     self,
+    #     *,
+    #     tenant_id: str | None = None,
+    #     instance_name: str | None = None,
+    #     limit: int | None = None,
+    # ):
+    #     """
+    #     Fetch authoritative evidence and pass it to the
+    #     authoritative CorrelationEngine.
+    #     """
+    #     started = perf_counter()
+
+    #     evidence = self._fetch_evidence(
+    #         tenant_id=tenant_id,
+    #         instance_name=instance_name,
+    #         limit=limit,
+    #     )
+    #     fetched_at = perf_counter()
+
+    #     result = self.engine.process(evidence)
+
+    #     completed_at = perf_counter()
+
+    #     print(
+    #         "Correlation timing: "
+    #         f"fetch={(fetched_at - started) * 1000:.1f} ms, "
+    #         f"engine={(completed_at - fetched_at) * 1000:.1f} ms, "
+    #         f"total={(completed_at - started) * 1000:.1f} ms, "
+    #         f"evidence={len(evidence)}, "
+    #         f"candidates={result.candidate_count}, "
+    #         f"findings={result.finding_count}"
+    #     )
+
+    #     return result
+
+    
 
         # return self.engine.process(evidence)
 

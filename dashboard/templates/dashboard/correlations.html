@@ -12,12 +12,22 @@
         </div>
         <h1 class="section-title">Correlations</h1>
         <p class="section-description">
-            Review correlation findings, policy decisions and supporting evidence.
+            Review evidence that the engine identified as potentially related.
         </p>
     </div>
 </div>
 
 {% include "dashboard/partials/central_status.html" %}
+
+<div class="correlation-clarification" role="note">
+    <strong>How to read these findings</strong>
+    <p>
+        A finding means the evidence met the correlation score threshold.
+        The score reflects matching evidence signals, not the probability
+        that an event occurred or caused another event. Causal links, when
+        shown, are separate rule-based interpretations.
+    </p>
+</div>
 
 {# Summary cards use precomputed result metadata. #}
 <div class="overview-grid">
@@ -38,19 +48,19 @@
     </div>
 
     <div class="card overview-stat-card">
-        <div class="overview-stat-label">Entities</div>
+        <div class="overview-stat-label">Entities identified</div>
         <div class="overview-stat-value">
             {% if result %}{{ result.metadata.entity_count|default:"0" }}{% else %}—{% endif %}
         </div>
-        <div class="overview-stat-note">Entities extracted</div>
+        <div class="overview-stat-note">People, resources and systems</div>
     </div>
 
     <div class="card overview-stat-card">
-        <div class="overview-stat-label">Relationships</div>
+        <div class="overview-stat-label">Entity links</div>
         <div class="overview-stat-value">
             {% if result %}{{ result.metadata.relationship_count|default:"0" }}{% else %}—{% endif %}
         </div>
-        <div class="overview-stat-note">Relationships mapped</div>
+        <div class="overview-stat-note">Links between identified entities</div>
     </div>
 </div>
 
@@ -69,11 +79,45 @@
                 value="{{ instance_name|default:'' }}" placeholder="All instances">
         </div>
 
+        <div class="form-group filter-field">
+            <label for="scope" class="form-label">Scope</label>
+            <select id="scope" name="scope" class="form-control">
+                <option value="" {% if not scope %}selected{% endif %}>All scopes</option>
+                <option value="same_tenant" {% if scope == "same_tenant" %}selected{% endif %}>Same tenant</option>
+                <option value="cross_tenant" {% if scope == "cross_tenant" %}selected{% endif %}>Cross-tenant</option>
+            </select>
+        </div>
+
+        <div class="form-group filter-field">
+            <label for="authorization_basis" class="form-label">Authorisation basis</label>
+            <select id="authorization_basis" name="authorization_basis" class="form-control">
+                <option value="" {% if not authorization_basis %}selected{% endif %}>All permitted findings</option>
+                <option value="same_tenant" {% if authorization_basis == "same_tenant" %}selected{% endif %}>Same-tenant permitted</option>
+                <option value="cross_tenant" {% if authorization_basis == "cross_tenant" %}selected{% endif %}>Cross-tenant explicitly permitted</option>
+            </select>
+            <!-- <span class="form-help">Only findings permitted by the policy are shown; denied candidates are excluded.</span> -->
+        </div>
+
+        <div class="form-group filter-field">
+            <label for="timestamp_from" class="form-label">Event date from</label>
+            <input id="timestamp_from" name="timestamp_from" type="date" class="form-control"
+                value="{{ timestamp_from }}">
+        </div>
+
+        <div class="form-group filter-field">
+            <label for="timestamp_to" class="form-label">Event date to</label>
+            <input id="timestamp_to" name="timestamp_to" type="date" class="form-control"
+                value="{{ timestamp_to }}">
+        </div>
+
         <div class="filter-actions">
             <button type="submit" class="btn btn-primary">Apply filters</button>
             <a href="{% url 'dashboard:correlations' %}" class="btn btn-secondary">Clear</a>
         </div>
     </form>
+    {% if filter_error %}
+    <p class="form-error" role="alert">{{ filter_error }}</p>
+    {% endif %}
 </div>
 
 <div class="card">
@@ -82,14 +126,14 @@
             <div class="section-header-main">
                 <h2 class="section-title">Correlation findings</h2>
                 <p class="section-description">
-                    Findings based on temporal, entity, resource, action and
-                    provenance signals.
+                    Each finding groups evidence with matching signals.
+                    Open a finding for the evidence and scoring details.
                 </p>
             </div>
 
             {% if result %}
             <div class="section-header-meta">
-                {{ result.finding_count }} finding{{ result.finding_count|pluralize }}
+                {{ filtered_finding_count }} matching finding{{ filtered_finding_count|pluralize }}
             </div>
             {% endif %}
         </div>
@@ -107,14 +151,14 @@
         <div class="empty-state">
             <h3 class="empty-state-title">No correlation findings</h3>
             <p class="empty-state-text">
-                {% if tenant_id or instance_name %}
+                {% if tenant_id or instance_name or scope or authorization_basis or timestamp_from or timestamp_to %}
                 No findings were generated for the selected evidence scope.
                 {% else %}
                 No findings were generated for the current evidence set.
                 {% endif %}
             </p>
 
-            {% if tenant_id or instance_name %}
+            {% if tenant_id or instance_name or scope or authorization_basis or timestamp_from or timestamp_to %}
             <a href="{% url 'dashboard:correlations' %}" class="btn btn-secondary">Clear filters</a>
             {% endif %}
         </div>
@@ -132,10 +176,10 @@
                 <div class="correlation-card-header">
                     <div>
                         <div class="correlation-id">
-                            <code>{{ finding.finding_id }}</code>
+                            Finding ID: <code>{{ finding.finding_id }}</code>
                         </div>
                         <h3 class="correlation-card-title">
-                            Correlation finding
+                            Finding {{ page_obj.start_index|add:forloop.counter0 }}
                         </h3>
                     </div>
 
@@ -157,10 +201,13 @@
                     </div>
 
                     <div>
-                        <strong>Score</strong>
+                        <strong>Evidence match score</strong>
                         <span>
                             {{ finding.score.value|floatformat:3 }}
                             / 1.000
+                        </span>
+                        <span class="correlation-meta-note">
+                            Required: {{ finding.score.threshold|floatformat:3 }}
                         </span>
                     </div>
 
@@ -189,7 +236,7 @@
 
                 <div class="correlation-basis">
                     <div class="correlation-basis-title">
-                        Why did this correlate?
+                        Why these items were matched
                     </div>
                     <p class="correlation-card-description">
                         {{ finding.explanation|default:"No explanation available."|truncatechars:350 }}
@@ -262,9 +309,9 @@
                     </summary>
 
                     <p class="correlation-card-description">
-                        Confidence represents the reasoner's assessment;
-                        it is not a calibrated probability that causation
-                        has been proven.
+                        These links describe rule-matched event relationships;
+                        they do not prove causation. Confidence is a rule score,
+                        not a probability.
                     </p>
 
                     {% for link in finding.causal_relationships|slice:":3" %}
@@ -391,7 +438,7 @@
                         {% for feature in finding.score.features|slice:":10" %}
                         <div class="correlation-evidence-item">
                             <div>
-                                <strong>{{ feature.feature_name|display_value }}</strong>
+                                <strong>{{ feature.name|display_value }}</strong>
                                 <div class="detail-subtext">
                                     {{ feature.explanation|default:"" }}
                                 </div>
@@ -504,7 +551,7 @@
             <div class="pagination-actions">
                 {% if page_obj.has_previous %}
                 <a class="btn btn-secondary"
-                    href="?tenant_id={{ tenant_id|urlencode }}&amp;instance_name={{ instance_name|urlencode }}&amp;page={{ page_obj.previous_page_number }}&amp;page_size={{ page_size }}"
+                    href="?tenant_id={{ tenant_id|urlencode }}&amp;instance_name={{ instance_name|urlencode }}&amp;scope={{ scope|urlencode }}&amp;authorization_basis={{ authorization_basis|urlencode }}&amp;timestamp_from={{ timestamp_from|urlencode }}&amp;timestamp_to={{ timestamp_to|urlencode }}&amp;page={{ page_obj.previous_page_number }}&amp;page_size={{ page_size }}"
                     rel="prev">
                     Previous
                 </a>
@@ -512,7 +559,7 @@
         
                 {% if page_obj.has_next %}
                 <a class="btn btn-secondary"
-                    href="?tenant_id={{ tenant_id|urlencode }}&amp;instance_name={{ instance_name|urlencode }}&amp;page={{ page_obj.next_page_number }}&amp;page_size={{ page_size }}"
+                    href="?tenant_id={{ tenant_id|urlencode }}&amp;instance_name={{ instance_name|urlencode }}&amp;scope={{ scope|urlencode }}&amp;authorization_basis={{ authorization_basis|urlencode }}&amp;timestamp_from={{ timestamp_from|urlencode }}&amp;timestamp_to={{ timestamp_to|urlencode }}&amp;page={{ page_obj.next_page_number }}&amp;page_size={{ page_size }}"
                     rel="next">
                     Next
                 </a>

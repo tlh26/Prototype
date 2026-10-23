@@ -35,7 +35,7 @@ class OverviewService:
         *,
         tenant_service: TenantService,
         correlation_service: CorrelationService,
-        evidence_limit: int = 100,
+        evidence_limit: int = 200,
         presentation_adapter: (
             CorrelationPresentationAdapter | None
         ) = None,

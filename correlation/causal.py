@@ -778,6 +778,49 @@ class CausalReasoner:
     # Tenant policy defence-in-depth
     # ==================================================================
 
+    # @staticmethod
+    # def _tenant_scope_allowed(
+    #     *,
+    #     first: CanonicalEvidence,
+    #     second: CanonicalEvidence,
+    #     context: CorrelationContext,
+    # ) -> bool:
+    #     first_tenant = first.tenant_id
+    #     second_tenant = second.tenant_id
+
+    #     if (
+    #         first_tenant is None
+    #         or second_tenant is None
+    #     ):
+    #         return True
+
+    #     if first_tenant == second_tenant:
+    #         return True
+
+    #     if not context.allow_cross_tenant:
+    #         return False
+
+    #     pair = tuple(
+    #         sorted(
+    #             (
+    #                 first_tenant,
+    #                 second_tenant,
+    #             )
+    #         )
+    #     )
+
+    #     if context.allowed_tenant_pairs:
+    #         allowed_pairs = {
+    #             tuple(sorted(item))
+    #             for item in context.allowed_tenant_pairs
+    #         }
+
+    #         if pair not in allowed_pairs:
+    #             return False
+
+    #     return True
+
+
     @staticmethod
     def _tenant_scope_allowed(
         *,
@@ -788,37 +831,34 @@ class CausalReasoner:
         first_tenant = first.tenant_id
         second_tenant = second.tenant_id
 
-        if (
-            first_tenant is None
-            or second_tenant is None
-        ):
-            return True
+        # Missing tenant attribution must fail closed.
+        if first_tenant is None or second_tenant is None:
+            return False
 
+        # Same-tenant reasoning is permitted by the normal
+        # evidence scope checks.
         if first_tenant == second_tenant:
             return True
 
+        # Cross-tenant reasoning requires explicit authorisation.
         if not context.allow_cross_tenant:
             return False
 
-        pair = tuple(
-            sorted(
-                (
-                    first_tenant,
-                    second_tenant,
-                )
-            )
+        if not context.allowed_tenant_pairs:
+            return False
+
+        candidate_pair = frozenset(
+            (first_tenant, second_tenant)
         )
 
-        if context.allowed_tenant_pairs:
-            allowed_pairs = {
-                tuple(sorted(item))
-                for item in context.allowed_tenant_pairs
-            }
+        permitted_pairs = {
+            frozenset(pair)
+            for pair in context.allowed_tenant_pairs
+            if len(pair) == 2 and pair[0] != pair[1]
+        }
 
-            if pair not in allowed_pairs:
-                return False
+        return candidate_pair in permitted_pairs
 
-        return True
 
     # ==================================================================
     # Relationship construction

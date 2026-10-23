@@ -131,9 +131,11 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 import os
 
+SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", SECRET_KEY)
+
 
 DASHBOARD_CORRELATION_LIMIT = int(
-    os.getenv("DASHBOARD_CORRELATION_LIMIT", "200")
+    os.getenv("DASHBOARD_CORRELATION_LIMIT", "250")
 )
 
 DASHBOARD_EVIDENCE_LIMIT = int(
@@ -151,4 +153,26 @@ DASHBOARD_TENANTS = tuple(
         "tenant-a,tenant-b,tenant-c,tenant-d",
     ).split(",")
     if tenant.strip()
+)
+
+CORRELATION_ENABLE_CROSS_TENANT = True
+
+CORRELATION_ALLOWED_TENANT_PAIRS = (
+    ("tenant-a", "tenant-b"),
+)
+
+CORRELATION_PRIVACY_MODE = os.getenv(
+    "CORRELATION_PRIVACY_MODE",
+    "raw",
+).strip().lower()
+
+_correlation_features = os.getenv("CORRELATION_PERMITTED_FEATURE_TYPES")
+CORRELATION_PERMITTED_FEATURE_TYPES = (
+    tuple(
+        feature.strip()
+        for feature in _correlation_features.split(",")
+        if feature.strip()
+    )
+    if _correlation_features
+    else None
 )
