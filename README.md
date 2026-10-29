@@ -27,14 +27,6 @@ Incus host agent ──────┘                                          
 
 The agents’ local spool is a delivery buffer; Central PostgreSQL is the authoritative evidence store. The dashboard reads evidence from Central PostgreSQL.
 
-## Video Demonstration
-
-Watch a walkthrough of the prototype, including evidence collection, delivery to the Central API, and the dashboard’s evidence and correlation views:
-
-[Watch the video demonstration](VIDEO_URL)
-
-Replace `VIDEO_URL` with the published link to your project demonstration.
-
 ## Main components
 
 | Path | Purpose |
