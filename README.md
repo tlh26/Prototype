@@ -52,21 +52,36 @@ The standalone agent package requires Python 3.10 or newer. See [`evidenceAgent/
 
 ## Experimental environment
 
-The following describes the environment recorded for the prototype evaluation, not a minimum or recommended production configuration. Host resource values are point-in-time measurements captured with the experiment metadata.
+This table documents the captured prototype evaluation environment, not a production sizing recommendation. Host resource readings are point-in-time snapshots; package versions are the versions pinned in the repository dependency file.
 
-| Area | Recorded configuration |
-| --- | --- |
-| Experiment host | Ubuntu 24.04.4 LTS guest VM, hostname `tood-Virtual-Machine`, on `aarch64`; recorded kernel `7.0.0-31-generic`. |
-| CPU | CPU model, number of cores, and VM vCPU allocation were not recorded. |
-| Memory | Approximately 3.8 GiB total RAM; the baseline snapshot reports approximately 2.5 GiB available and 4.0 GiB swap. |
-| Storage | Root filesystem on `/dev/vda2`, 68 GiB total, with 43 GiB used and 22 GiB available in the captured baseline. Incus used a `dir` storage pool at `/var/lib/incus/storage-pools/local`. Physical disk type and underlying host storage configuration were not recorded. |
-| Virtualisation | Incus client and server version 6.0.0 ran on the Ubuntu VM. The recorded Incus inventory contains 17 containers across five projects (the default project and four tenant projects); 15 were running and two were stopped in that snapshot. Incus container CPU and memory limits were not recorded. |
-| Language/runtime | Python 3.12.3 on the experiment host. The separately packaged evidence agent declares Python 3.10 or newer as its minimum. |
-| Application framework | Django 6.1.1; FastAPI 0.141.1 and Uvicorn 0.52.4 for the Central Evidence API. |
-| Database client and server | The pinned Python PostgreSQL driver is Psycopg 3.3.6. Experiment history configures the Central PostgreSQL database through a remote private-network endpoint on port 5432. The PostgreSQL server version and the database host's CPU, RAM, storage, and physical-versus-VM configuration were not recorded. |
-| Correlation dependencies | The correlation implementation primarily uses the Python standard library (including `bisect`, `collections`, `datetime`, `hashlib`, and `hmac`) and Pydantic 2.13.4 for data models and validation. Psycopg 3.3.6 is used for Central database access; it is not the correlation scoring library. |
+| Layer | Component | Recorded configuration |
+| --- | --- | --- |
+| Application/Incus VM | Operating system and architecture | Ubuntu 24.04.4 LTS (Noble), `aarch64`; captured kernel `7.0.0-31-generic`. |
+| Application/Incus VM | CPU | CPU model, vCPU count, and physical host CPU allocation were not captured. |
+| Application/Incus VM | Memory | Approximately 3.8 GiB RAM; snapshot shows approximately 2.5 GiB available and 4.0 GiB swap. |
+| Application/Incus VM | Storage | Guest root filesystem: 68 GiB total, 43 GiB used, 22 GiB available in the captured snapshot. Incus storage pool uses the `dir` driver. Underlying physical disk, IOPS, and host storage allocation are unreported. |
+| Application/Incus VM | Virtualization | Incus client and server 6.0.0. Snapshot inventory: 17 containers across the default project and four tenant projects; 15 running and two stopped. Per-container resource limits and the underlying hypervisor configuration were not captured. |
+| Application/Incus VM | Python runtime | Python 3.12.3 in the experiment capture. The standalone agent package declares Python 3.10 or newer. |
+| Application/Incus VM | Application services | Django 6.1.1 dashboard; FastAPI 0.141.1 Central API served by Uvicorn 0.52.4. |
+| Application/Incus VM | Main correlation / data dependencies | Pydantic 2.13.4, Psycopg 3.3.6, and Python standard-library modules including `bisect`, `collections`, `datetime`, `hashlib`, and `hmac`. |
+| Application/Incus VM | Dashboard-managed database | SQLite is configured for Django-managed data. Evidence and correlation inputs are read from Central PostgreSQL. |
+| Separate database machine | PostgreSQL server | Experiment history shows the Central database configured at a remote private-network endpoint on TCP port 5432. The server version, operating system, CPU, RAM, storage, virtualization type, and PostgreSQL tuning settings were not recorded. No address or credentials are reproduced here. |
 
-The host OS, Incus, Python, memory, disk, and container values are from the captured experiment configuration and `RUN_001` metadata. Application dependency versions are those pinned in [`requirements.txt`](./requirements.txt); they describe the recorded project dependency set, not independently verified versions of every service installed on the separate database host. See [`experimentation/configs/`](./experimentation/configs/), [`experimentation/results/RUN_001/metadata/`](./experimentation/results/RUN_001/metadata/), and [`experimentation/exported_history.txt`](./experimentation/exported_history.txt) for the underlying records. Missing CPU and PostgreSQL host details should be treated as unreported, not assumed.
+### Deployment arrangement and communication
+
+The captured setup uses an Ubuntu guest VM as the application and Incus host. The Central Evidence API and Django dashboard run from this project’s Python environment on that VM; Incus hosts the tenant workload containers. Instance agents run in configured workloads, while the host audit agent reads the Incus host's `auditd` log. Central PostgreSQL is on a separate machine, reached by the API and dashboard over the configured private network. The experiment records do not specify which physical or virtual infrastructure hosts that database machine.
+
+Agents communicate with Central using HTTP JSON REST requests through the configured `EVIDENCE_CENTRAL_URL`. Instance events use `POST /api/v1/evidence/events`; host audit data is sent in batches to `POST /api/v1/evidence/batches`. Requests carry an API key in the `X-API-Key` header, and raw evidence bytes are Base64-encoded for JSON transport. The Central API and dashboard connect to PostgreSQL using Psycopg (PostgreSQL's client protocol). Django uses its local SQLite database for Django-managed data. The agent client accepts an HTTP or HTTPS URL; it does not itself enforce TLS. The deployment must therefore provide transport protection (for example, HTTPS/TLS termination and network controls) rather than assuming it is enabled by the code.
+
+### Starting, configuring, securing, and monitoring
+
+- **Central API:** Configure `CENTRAL_DATABASE_URL` and `EVIDENCE_API_KEY` through the process environment or a protected environment file. Start for local development with `python -m uvicorn central.app:app --host 127.0.0.1 --port 9443`. The API configuration defaults to host `0.0.0.0` and port `9443` when deployed through its configured runtime; bind only to an intended interface and apply firewall/reverse-proxy controls.
+- **Dashboard:** Configure `CENTRAL_DATABASE_URL`, `DJANGO_SECRET_KEY`, and, as needed, `CORRELATION_PRIVACY_MODE` and `CORRELATION_PERMITTED_FEATURE_TYPES`. `DJANGO_SECRET_KEY` signs Django data and is also passed to the correlation engine for pseudonymisation/generalisation. Keep it stable, secret, and out of source control. The `python manage.py runserver` command documented here is for development, not production deployment.
+- **Agents:** Provide tenant, instance (instance agent), and agent identifiers, Central URL, and API key through a protected environment file. Defaults include a 10-second collection interval and local state/spool directories; host mode also configures the audit-log and checkpoint paths. The supplied systemd unit starts the agent as root, restarts it after failures, and sends standard output/error to the system journal. Protect the file because it contains the API key; grant only required log access and privileges.
+- **Security boundary:** The API checks the API key and verifies the SHA-256 digest of submitted evidence before storage. These controls do not by themselves encrypt network traffic, provide per-user tenant access control, or make database records tamper-proof. Use TLS, restricted network reachability, secure secret management, and least-privilege deployment as operational controls. Do not expose credentials, internal endpoint addresses, or secret values in reports.
+- **Monitoring:** The API exposes `GET /health` for service/database status. Agent service output is available in systemd's journal; API and development dashboard output is emitted by their service processes. The correlation service logs timing and event/candidate/finding counts. The repository does not configure a central metrics, alerting, tracing, or log-retention stack, so availability beyond these endpoints and logs is not claimed.
+
+The recorded environment facts come from [`experimentation/configs/`](./experimentation/configs/) and [`experimentation/results/RUN_001/metadata/`](./experimentation/results/RUN_001/metadata/); the remote database arrangement is reflected in [`experimentation/exported_history.txt`](./experimentation/exported_history.txt). Software versions are pinned in [`requirements.txt`](./requirements.txt). CPU allocation and the separate PostgreSQL machine's detailed configuration remain unreported; they should not be inferred from the VM snapshot.
 
 ## Getting started
 
@@ -178,7 +193,3 @@ python -m pytest
 - Use a stable, secret `DJANGO_SECRET_KEY` of at least 32 bytes when using pseudonymised mode.
 - The default correlation mode is `raw`; select a privacy mode intentionally when handling sensitive evidence.
 - Review agent privileges and file access before deploying collectors.
-
-## License
-
-See [`LICENSE`](./LICENSE).
